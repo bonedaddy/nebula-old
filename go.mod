@@ -16,6 +16,7 @@ require (
 	github.com/imdario/mergo v0.3.8
 	github.com/kardianos/service v1.1.0
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
+	github.com/libp2p/go-eventbus v0.1.0
 	github.com/miekg/dns v1.1.28
 	github.com/multiformats/go-base36 v0.1.0
 	github.com/nbrownus/go-metrics-prometheus v0.0.0-20180622211546-6e6d5173d99c
