@@ -937,6 +937,6 @@ func (mf *mockFirewall) AddRule(incoming bool, proto uint8, startPort int32, end
 
 func resetConntrack(fw *Firewall) {
 	fw.Conntrack.Lock()
-	fw.Conntrack.Conns = map[FirewallPacket]*conn{}
+	fw.Conntrack.Conns = map[FirewallPacket]conn{}
 	fw.Conntrack.Unlock()
 }

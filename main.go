@@ -126,7 +126,7 @@ func Main(config *Config, configTest bool, buildVersion string, logger *logrus.L
 
 	// set up our UDP listener
 	udpQueues := config.GetInt("listen.routines", 1)
-	var udpServer *udpConn
+	var udpServer udpConn
 
 	if !configTest {
 		udpServer, err = NewListener(config.GetString("listen.host", "0.0.0.0"), config.GetInt("listen.port", 0), udpQueues > 1)

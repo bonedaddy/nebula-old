@@ -75,7 +75,7 @@ type Firewall struct {
 type FirewallConntrack struct {
 	sync.RWMutex
 
-	Conns      map[FirewallPacket]*conn
+	Conns      map[FirewallPacket]conn
 	TimerWheel *TimerWheel
 }
 
@@ -186,7 +186,7 @@ func NewFirewall(tcpTimeout, UDPTimeout, defaultTimeout time.Duration, c *cert.N
 
 	return &Firewall{
 		Conntrack: &FirewallConntrack{
-			Conns:      make(map[FirewallPacket]*conn),
+			Conns:      make(map[FirewallPacket]conn),
 			TimerWheel: NewTimerWheel(min, max),
 		},
 		InRules:        newFirewallTable(),
@@ -512,9 +512,9 @@ func (f *Firewall) inConns(packet []byte, fp FirewallPacket, incoming bool, h *H
 	case fwProtoTCP:
 		c.Expires = time.Now().Add(f.TCPTimeout)
 		if incoming {
-			f.checkTCPRTT(c, packet)
+			f.checkTCPRTT(&c, packet)
 		} else {
-			setTCPRTTTracking(c, packet)
+			setTCPRTTTracking(&c, packet)
 		}
 	case fwProtoUDP:
 		c.Expires = time.Now().Add(f.UDPTimeout)
@@ -527,13 +527,13 @@ func (f *Firewall) inConns(packet []byte, fp FirewallPacket, incoming bool, h *H
 
 func (f *Firewall) addConn(packet []byte, fp FirewallPacket, incoming bool) {
 	var timeout time.Duration
-	c := &conn{}
+	var c conn
 
 	switch fp.Protocol {
 	case fwProtoTCP:
 		timeout = f.TCPTimeout
 		if !incoming {
-			setTCPRTTTracking(c, packet)
+			setTCPRTTTracking(&c, packet)
 		}
 	case fwProtoUDP:
 		timeout = f.UDPTimeout

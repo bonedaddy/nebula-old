@@ -28,15 +28,15 @@ func Test_NewConnectionManagerTest(t *testing.T) {
 		rawCertificateNoKey: []byte{},
 	}
 
-	lh := NewLightHouse(false, 0, []uint32{}, 1000, 0, &udpConn{}, false, 1, false)
+	lh := NewLightHouse(false, 0, []uint32{}, 1000, 0, udpConn{}, false, 1, false)
 	ifce := &Interface{
 		hostMap:          hostMap,
 		inside:           &Tun{},
-		outside:          &udpConn{},
+		outside:          udpConn{},
 		certState:        cs,
 		firewall:         &Firewall{},
 		lightHouse:       lh,
-		handshakeManager: NewHandshakeManager(vpncidr, preferredRanges, hostMap, lh, &udpConn{}, defaultHandshakeConfig),
+		handshakeManager: NewHandshakeManager(vpncidr, preferredRanges, hostMap, lh, udpConn{}, defaultHandshakeConfig),
 	}
 	now := time.Now()
 
@@ -91,15 +91,15 @@ func Test_NewConnectionManagerTest2(t *testing.T) {
 		rawCertificateNoKey: []byte{},
 	}
 
-	lh := NewLightHouse(false, 0, []uint32{}, 1000, 0, &udpConn{}, false, 1, false)
+	lh := NewLightHouse(false, 0, []uint32{}, 1000, 0, udpConn{}, false, 1, false)
 	ifce := &Interface{
 		hostMap:          hostMap,
 		inside:           &Tun{},
-		outside:          &udpConn{},
+		outside:          udpConn{},
 		certState:        cs,
 		firewall:         &Firewall{},
 		lightHouse:       lh,
-		handshakeManager: NewHandshakeManager(vpncidr, preferredRanges, hostMap, lh, &udpConn{}, defaultHandshakeConfig),
+		handshakeManager: NewHandshakeManager(vpncidr, preferredRanges, hostMap, lh, udpConn{}, defaultHandshakeConfig),
 	}
 	now := time.Now()
 

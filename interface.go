@@ -23,7 +23,7 @@ type Inside interface {
 
 type InterfaceConfig struct {
 	HostMap                 *HostMap
-	Outside                 *udpConn
+	Outside                 udpConn
 	Inside                  Inside
 	certState               *CertState
 	Cipher                  string
@@ -44,7 +44,7 @@ type InterfaceConfig struct {
 
 type Interface struct {
 	hostMap            *HostMap
-	outside            *udpConn
+	outside            udpConn
 	inside             Inside
 	certState          *CertState
 	cipher             string
@@ -67,7 +67,7 @@ type Interface struct {
 }
 
 func NewInterface(c *InterfaceConfig) (*Interface, error) {
-	if c.Outside == nil {
+	if c.Outside.sysFd == 0 {
 		return nil, errors.New("no outside connection")
 	}
 	if c.Inside == nil {
@@ -145,7 +145,7 @@ func (f *Interface) listenOut(i int) {
 		l.Error("failed to discover udp listening address", zap.Error(err))
 	}
 
-	var li *udpConn
+	var li udpConn
 	if i > 0 {
 		//TODO: handle error
 		li, err = NewListener(udp2ip(addr).String(), int(addr.Port), i > 0)

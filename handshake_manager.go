@@ -42,7 +42,7 @@ type HandshakeManager struct {
 	pendingHostMap *HostMap
 	mainHostMap    *HostMap
 	lightHouse     *LightHouse
-	outside        *udpConn
+	outside        udpConn
 	config         HandshakeConfig
 
 	// can be used to trigger outbound handshake for the given vpnIP
@@ -54,7 +54,7 @@ type HandshakeManager struct {
 	messageMetrics *MessageMetrics
 }
 
-func NewHandshakeManager(tunCidr *net.IPNet, preferredRanges []*net.IPNet, mainHostMap *HostMap, lightHouse *LightHouse, outside *udpConn, config HandshakeConfig) *HandshakeManager {
+func NewHandshakeManager(tunCidr *net.IPNet, preferredRanges []*net.IPNet, mainHostMap *HostMap, lightHouse *LightHouse, outside udpConn, config HandshakeConfig) *HandshakeManager {
 	return &HandshakeManager{
 		pendingHostMap: NewHostMap("pending", tunCidr, preferredRanges),
 		mainHostMap:    mainHostMap,

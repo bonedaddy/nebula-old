@@ -21,7 +21,7 @@ func Test_NewHandshakeManagerIndex(t *testing.T) {
 	preferredRanges := []*net.IPNet{localrange}
 	mainHM := NewHostMap("test", vpncidr, preferredRanges)
 
-	blah := NewHandshakeManager(tuncidr, preferredRanges, mainHM, &LightHouse{}, &udpConn{}, defaultHandshakeConfig)
+	blah := NewHandshakeManager(tuncidr, preferredRanges, mainHM, &LightHouse{}, udpConn{}, defaultHandshakeConfig)
 
 	now := time.Now()
 	blah.NextInboundHandshakeTimerTick(now)
@@ -63,7 +63,7 @@ func Test_NewHandshakeManagerVpnIP(t *testing.T) {
 	mw := &mockEncWriter{}
 	mainHM := NewHostMap("test", vpncidr, preferredRanges)
 
-	blah := NewHandshakeManager(tuncidr, preferredRanges, mainHM, &LightHouse{}, &udpConn{}, defaultHandshakeConfig)
+	blah := NewHandshakeManager(tuncidr, preferredRanges, mainHM, &LightHouse{}, udpConn{}, defaultHandshakeConfig)
 
 	now := time.Now()
 	blah.NextOutboundHandshakeTimerTick(now, mw)
@@ -113,7 +113,7 @@ func Test_NewHandshakeManagerTrigger(t *testing.T) {
 	mainHM := NewHostMap("test", vpncidr, preferredRanges)
 	lh := &LightHouse{}
 
-	blah := NewHandshakeManager(tuncidr, preferredRanges, mainHM, lh, &udpConn{}, defaultHandshakeConfig)
+	blah := NewHandshakeManager(tuncidr, preferredRanges, mainHM, lh, udpConn{}, defaultHandshakeConfig)
 
 	now := time.Now()
 	blah.NextOutboundHandshakeTimerTick(now, mw)
@@ -162,7 +162,7 @@ func Test_NewHandshakeManagerVpnIPcleanup(t *testing.T) {
 	mw := &mockEncWriter{}
 	mainHM := NewHostMap("test", vpncidr, preferredRanges)
 
-	blah := NewHandshakeManager(tuncidr, preferredRanges, mainHM, &LightHouse{}, &udpConn{}, defaultHandshakeConfig)
+	blah := NewHandshakeManager(tuncidr, preferredRanges, mainHM, &LightHouse{}, udpConn{}, defaultHandshakeConfig)
 
 	now := time.Now()
 	blah.NextOutboundHandshakeTimerTick(now, mw)
@@ -211,7 +211,7 @@ func Test_NewHandshakeManagerIndexcleanup(t *testing.T) {
 	preferredRanges := []*net.IPNet{localrange}
 	mainHM := NewHostMap("test", vpncidr, preferredRanges)
 
-	blah := NewHandshakeManager(tuncidr, preferredRanges, mainHM, &LightHouse{}, &udpConn{}, defaultHandshakeConfig)
+	blah := NewHandshakeManager(tuncidr, preferredRanges, mainHM, &LightHouse{}, udpConn{}, defaultHandshakeConfig)
 
 	now := time.Now()
 	blah.NextInboundHandshakeTimerTick(now)

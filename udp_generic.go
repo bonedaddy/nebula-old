@@ -46,16 +46,16 @@ func NewUDPAddrFromString(s string) udpAddr {
 	}
 }
 
-func NewListener(ip string, port int, multi bool) (*udpConn, error) {
+func NewListener(ip string, port int, multi bool) (udpConn, error) {
 	lc := NewListenConfig(multi)
 	pc, err := lc.ListenPacket(context.TODO(), "udp4", fmt.Sprintf("%s:%d", ip, port))
 	if err != nil {
-		return nil, err
+		return udpConn{}, err
 	}
 	if uc, ok := pc.(*net.UDPConn); ok {
 		return &udpConn{UDPConn: uc}, nil
 	}
-	return nil, fmt.Errorf("Unexpected PacketConn: %T %#v", pc, pc)
+	return udpConn{}, fmt.Errorf("Unexpected PacketConn: %T %#v", pc, pc)
 }
 
 func (ua udpAddr) Equals(t udpAddr) bool {

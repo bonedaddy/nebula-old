@@ -415,7 +415,7 @@ func (hm *HostMap) PunchList() []udpAddr {
 	return list
 }
 
-func (hm *HostMap) Punchy(conn *udpConn) {
+func (hm *HostMap) Punchy(conn udpConn) {
 	var metricsTxPunchy metrics.Counter
 
 	if hm.metricsEnabled {

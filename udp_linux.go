@@ -54,7 +54,7 @@ type rawSockaddrAny struct {
 	Pad  [96]int8
 }
 
-func NewListener(ip string, port int, multi bool) (*udpConn, error) {
+func NewListener(ip string, port int, multi bool) (udpConn, error) {
 	syscall.ForkLock.RLock()
 	fd, err := unix.Socket(unix.AF_INET, unix.SOCK_DGRAM, unix.IPPROTO_UDP)
 	if err == nil {
@@ -64,7 +64,7 @@ func NewListener(ip string, port int, multi bool) (*udpConn, error) {
 
 	if err != nil {
 		unix.Close(fd)
-		return nil, fmt.Errorf("unable to open socket: %s", err)
+		return udpConn{}, fmt.Errorf("unable to open socket: %s", err)
 	}
 
 	var lip [4]byte
@@ -72,12 +72,12 @@ func NewListener(ip string, port int, multi bool) (*udpConn, error) {
 
 	if multi {
 		if err = unix.SetsockoptInt(fd, unix.SOL_SOCKET, unix.SO_REUSEPORT, 1); err != nil {
-			return nil, fmt.Errorf("unable to set SO_REUSEPORT: %s", err)
+			return udpConn{}, fmt.Errorf("unable to set SO_REUSEPORT: %s", err)
 		}
 	}
 
 	if err = unix.Bind(fd, &unix.SockaddrInet4{Addr: lip, Port: port}); err != nil {
-		return nil, fmt.Errorf("unable to bind to socket: %s", err)
+		return udpConn{}, fmt.Errorf("unable to bind to socket: %s", err)
 	}
 
 	//TODO: this may be useful for forcing threads into specific cores
@@ -85,7 +85,7 @@ func NewListener(ip string, port int, multi bool) (*udpConn, error) {
 	//v, err := unix.GetsockoptInt(fd, unix.SOL_SOCKET, unix.SO_INCOMING_CPU)
 	//l.Println(v, err)
 
-	return &udpConn{sysFd: fd}, err
+	return udpConn{sysFd: fd}, err
 }
 
 func (u *udpConn) Rebind() error {

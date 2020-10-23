@@ -16,7 +16,7 @@ type LightHouse struct {
 	sync.RWMutex //Because we concurrently read and write to our maps
 	amLighthouse bool
 	myIp         uint32
-	punchConn    *udpConn
+	punchConn    udpConn
 
 	// Local cache of answers from light houses
 	addrMap map[uint32][]udpAddr
@@ -52,7 +52,7 @@ type EncWriter interface {
 	SendMessageToAll(t NebulaMessageType, st NebulaMessageSubType, vpnIp uint32, p, nb, out []byte)
 }
 
-func NewLightHouse(amLighthouse bool, myIp uint32, ips []uint32, interval int, nebulaPort int, pc *udpConn, punchBack bool, punchDelay time.Duration, metricsEnabled bool) *LightHouse {
+func NewLightHouse(amLighthouse bool, myIp uint32, ips []uint32, interval int, nebulaPort int, pc udpConn, punchBack bool, punchDelay time.Duration, metricsEnabled bool) *LightHouse {
 	h := LightHouse{
 		amLighthouse: amLighthouse,
 		myIp:         myIp,
