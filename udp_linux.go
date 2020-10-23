@@ -27,18 +27,18 @@ type udpAddr struct {
 	Port uint16
 }
 
-func NewUDPAddr(ip uint32, port uint16) *udpAddr {
-	return &udpAddr{IP: ip, Port: port}
+func NewUDPAddr(ip uint32, port uint16) udpAddr {
+	return udpAddr{IP: ip, Port: port}
 }
 
-func NewUDPAddrFromString(s string) *udpAddr {
+func NewUDPAddrFromString(s string) udpAddr {
 	p := strings.Split(s, ":")
 	if len(p) < 2 {
-		return nil
+		return udpAddr{}
 	}
 
 	port, _ := strconv.Atoi(p[1])
-	return &udpAddr{
+	return udpAddr{
 		IP:   ip2int(net.ParseIP(p[0])),
 		Port: uint16(port),
 	}
@@ -93,7 +93,7 @@ func (u *udpConn) Rebind() error {
 }
 
 func (ua *udpAddr) Copy() udpAddr {
-	return *ua
+	return udpAddr{IP: ua.IP, Port: ua.Port}
 }
 
 func (u *udpConn) SetRecvBuffer(n int) error {
@@ -207,7 +207,7 @@ func (u *udpConn) ReadMulti(msgs []rawMessage) (int, error) {
 	return int(n), nil
 }
 
-func (u *udpConn) WriteTo(b []byte, addr *udpAddr) error {
+func (u *udpConn) WriteTo(b []byte, addr udpAddr) error {
 	var rsa unix.RawSockaddrInet4
 
 	//TODO: sometimes addr is nil!
@@ -272,9 +272,9 @@ func (u *udpConn) reloadConfig(c *Config) {
 	}
 }
 
-func (ua *udpAddr) Equals(t *udpAddr) bool {
-	if t == nil || ua == nil {
-		return t == nil && ua == nil
+func (ua *udpAddr) Equals(t udpAddr) bool {
+	if t.Port == 0 || t.IP == 0 || ua == nil {
+		return t == udpAddr{} && ua == nil
 	}
 	return ua.IP == t.IP && ua.Port == t.Port
 }
@@ -291,10 +291,10 @@ func udp2ip(addr *udpAddr) net.IP {
 	return int2ip(addr.IP)
 }
 
-func udp2ipInt(addr *udpAddr) uint32 {
+func udp2ipInt(addr udpAddr) uint32 {
 	return addr.IP
 }
 
-func hostDidRoam(addr *udpAddr, newaddr *udpAddr) bool {
+func hostDidRoam(addr *udpAddr, newaddr udpAddr) bool {
 	return !addr.Equals(newaddr)
 }

@@ -31,7 +31,7 @@ func TestNewLhQuery(t *testing.T) {
 
 func TestNewipandportfromudpaddr(t *testing.T) {
 	blah := NewUDPAddrFromString("1.2.2.3:12345")
-	meh := NewIpAndPortFromUDPAddr(*blah)
+	meh := NewIpAndPortFromUDPAddr(blah)
 	assert.Equal(t, uint32(16908803), meh.Ip)
 	assert.Equal(t, uint32(12345), meh.Port)
 }
@@ -39,7 +39,7 @@ func TestNewipandportfromudpaddr(t *testing.T) {
 func TestNewipandportsfromudpaddrs(t *testing.T) {
 	blah := NewUDPAddrFromString("1.2.2.3:12345")
 	blah2 := NewUDPAddrFromString("9.9.9.9:47828")
-	group := []udpAddr{*blah, *blah2}
+	group := []udpAddr{blah, blah2}
 	hah := NewIpAndPortsFromNetIps(group)
 	assert.IsType(t, &[]*IpAndPort{}, hah)
 	//t.Error(reflect.TypeOf(hah))

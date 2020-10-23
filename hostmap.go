@@ -280,14 +280,14 @@ func (hm *HostMap) QueryReverseIndex(index uint32) (*HostInfo, error) {
 	return nil, fmt.Errorf("unable to find reverse index or connectionstate nil in %s hostmap", hm.name)
 }
 
-func (hm *HostMap) AddRemote(vpnIp uint32, remote *udpAddr) *HostInfo {
+func (hm *HostMap) AddRemote(vpnIp uint32, remote udpAddr) *HostInfo {
 	hm.Lock()
 	i, v := hm.Hosts[vpnIp]
 	if v {
-		i.AddRemote(*remote)
+		i.AddRemote(remote)
 	} else {
 		i = &HostInfo{
-			Remotes:         []*HostInfoDest{NewHostInfoDest(remote)},
+			Remotes:         []*HostInfoDest{NewHostInfoDest(&remote)},
 			promoteCounter:  0,
 			hostId:          vpnIp,
 			HandshakePacket: make(map[uint8][]byte),
@@ -427,7 +427,7 @@ func (hm *HostMap) Punchy(conn *udpConn) {
 	for {
 		for _, addr := range hm.PunchList() {
 			metricsTxPunchy.Inc(1)
-			conn.WriteTo([]byte{1}, addr)
+			conn.WriteTo([]byte{1}, *addr)
 		}
 		time.Sleep(time.Second * 30)
 	}
@@ -496,7 +496,7 @@ func (i *HostInfo) TryPromoteBest(preferredRanges []*net.IPNet, ifce *Interface)
 		}
 
 		best, preferred := i.getBestRemote(preferredRanges)
-		if preferred && !best.Equals(i.remote) {
+		if preferred && !best.Equals(*i.remote) {
 			// Try to send a test packet to that host, this should
 			// cause it to detect a roaming event and switch remotes
 			ifce.send(test, testRequest, i.ConnectionState, i, best, []byte(""), make([]byte, 12), make([]byte, mtu))
@@ -563,7 +563,7 @@ func (i *HostInfo) rotateRemote() {
 	// We want to look at all but the very last entry since that is handled at the end
 	for x := 0; x < len(i.Remotes)-1; x++ {
 		// Find our current position and move to the next one in the list
-		if i.Remotes[x].addr.Equals(i.remote) {
+		if i.Remotes[x].addr.Equals(*i.remote) {
 			i.remote = i.Remotes[x+1].addr
 			return
 		}
@@ -639,7 +639,7 @@ func (i *HostInfo) AddRemote(r udpAddr) *udpAddr {
 	remote := &r
 	//add := true
 	for _, r := range i.Remotes {
-		if r.addr.Equals(remote) {
+		if r.addr.Equals(*remote) {
 			return r.addr
 			//add = false
 		}

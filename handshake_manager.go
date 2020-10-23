@@ -155,7 +155,7 @@ func (c *HandshakeManager) handleOutbound(vpnIP uint32, f EncWriter, lighthouseT
 		if hostinfo.HandshakeReady && hostinfo.remote != nil {
 
 			c.messageMetrics.Tx(handshake, NebulaMessageSubType(hostinfo.HandshakePacket[0][1]), 1)
-			err := c.outside.WriteTo(hostinfo.HandshakePacket[0], hostinfo.remote)
+			err := c.outside.WriteTo(hostinfo.HandshakePacket[0], *hostinfo.remote)
 
 			if err != nil {
 				hostinfo.logger().Error(

@@ -15,7 +15,7 @@ func HandleIncomingHandshake(f *Interface, addr *udpAddr, packet []byte, h *Head
 	//	return
 	//}
 
-	if !f.lightHouse.remoteAllowList.Allow(udp2ipInt(addr)) {
+	if !f.lightHouse.remoteAllowList.Allow(udp2ipInt(*addr)) {
 		l.Debug(
 			"lighthouse.remote_allow_list denied incoming handshake",
 			zap.Uint32("udpIp", addr.IP),
@@ -29,7 +29,7 @@ func HandleIncomingHandshake(f *Interface, addr *udpAddr, packet []byte, h *Head
 	case handshakeIXPSK0:
 		switch h.MessageCounter {
 		case 1:
-			tearDown = ixHandshakeStage1(f, addr, newHostinfo, packet, h)
+			tearDown = ixHandshakeStage1(f, *addr, newHostinfo, packet, h)
 		case 2:
 			tearDown = ixHandshakeStage2(f, addr, newHostinfo, packet, h)
 		}

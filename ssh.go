@@ -565,17 +565,17 @@ func sshCreateTunnel(ifce *Interface, fs interface{}, a []string, w sshd.StringW
 		return w.WriteLine("Tunnel already handshaking")
 	}
 
-	var addr *udpAddr
+	var addr udpAddr
 	if flags.Address != "" {
 		addr = NewUDPAddrFromString(flags.Address)
-		if addr == nil {
+		if addr.IP == 0 || addr.IP == 0 {
 			return w.WriteLine("Address could not be parsed")
 		}
 	}
 
 	hostInfo = ifce.handshakeManager.AddVpnIP(vpnIp)
-	if addr != nil {
-		hostInfo.SetRemote(*addr)
+	if addr.IP != 0 && addr.IP != 0 {
+		hostInfo.SetRemote(addr)
 	}
 	ifce.getOrHandshake(vpnIp)
 
@@ -598,7 +598,7 @@ func sshChangeRemote(ifce *Interface, fs interface{}, a []string, w sshd.StringW
 	}
 
 	addr := NewUDPAddrFromString(flags.Address)
-	if addr == nil {
+	if addr.IP == 0 || addr.IP == 0 {
 		return w.WriteLine("Address could not be parsed")
 	}
 
@@ -617,7 +617,7 @@ func sshChangeRemote(ifce *Interface, fs interface{}, a []string, w sshd.StringW
 		return w.WriteLine(fmt.Sprintf("Could not find tunnel for vpn ip: %v", a[0]))
 	}
 
-	hostInfo.SetRemote(*addr)
+	hostInfo.SetRemote(addr)
 	return w.WriteLine("Changed")
 }
 

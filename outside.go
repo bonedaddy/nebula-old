@@ -46,7 +46,7 @@ func (f *Interface) readOutsidePackets(addr *udpAddr, out []byte, packet []byte,
 
 	switch header.Type {
 	case message:
-		if !f.handleEncrypted(ci, addr, header) {
+		if !f.handleEncrypted(ci, *addr, header) {
 			return
 		}
 
@@ -56,7 +56,7 @@ func (f *Interface) readOutsidePackets(addr *udpAddr, out []byte, packet []byte,
 
 	case lightHouse:
 		f.messageMetrics.Rx(header.Type, header.Subtype, 1)
-		if !f.handleEncrypted(ci, addr, header) {
+		if !f.handleEncrypted(ci, *addr, header) {
 			return
 		}
 
@@ -80,7 +80,7 @@ func (f *Interface) readOutsidePackets(addr *udpAddr, out []byte, packet []byte,
 
 	case test:
 		f.messageMetrics.Rx(header.Type, header.Subtype, 1)
-		if !f.handleEncrypted(ci, addr, header) {
+		if !f.handleEncrypted(ci, *addr, header) {
 			return
 		}
 
@@ -101,7 +101,7 @@ func (f *Interface) readOutsidePackets(addr *udpAddr, out []byte, packet []byte,
 		if header.Subtype == testRequest {
 			// This testRequest might be from TryPromoteBest, so we should roam
 			// to the new IP address before responding
-			f.handleHostRoaming(hostinfo, addr)
+			f.handleHostRoaming(hostinfo, *addr)
 			f.send(test, testReply, ci, hostinfo, hostinfo.remote, d, nb, out)
 		}
 
@@ -123,7 +123,7 @@ func (f *Interface) readOutsidePackets(addr *udpAddr, out []byte, packet []byte,
 
 	case closeTunnel:
 		f.messageMetrics.Rx(header.Type, header.Subtype, 1)
-		if !f.handleEncrypted(ci, addr, header) {
+		if !f.handleEncrypted(ci, *addr, header) {
 			return
 		}
 		hostinfo.logger().Info(
@@ -140,7 +140,7 @@ func (f *Interface) readOutsidePackets(addr *udpAddr, out []byte, packet []byte,
 		return
 	}
 
-	f.handleHostRoaming(hostinfo, addr)
+	f.handleHostRoaming(hostinfo, *addr)
 
 	f.connectionManager.In(hostinfo.hostId)
 }
@@ -154,13 +154,13 @@ func (f *Interface) closeTunnel(hostInfo *HostInfo) {
 	f.hostMap.DeleteIndex(hostInfo.localIndexId)
 }
 
-func (f *Interface) handleHostRoaming(hostinfo *HostInfo, addr *udpAddr) {
+func (f *Interface) handleHostRoaming(hostinfo *HostInfo, addr udpAddr) {
 	if hostDidRoam(hostinfo.remote, addr) {
 		if !f.lightHouse.remoteAllowList.Allow(udp2ipInt(addr)) {
 			hostinfo.logger().Debug("lighthouse.remote_allow_list denied roaming", zap.Any("newAddr", addr))
 			return
 		}
-		if !hostinfo.lastRoam.IsZero() && addr.Equals(hostinfo.lastRoamRemote) && time.Since(hostinfo.lastRoam) < RoamingSupressSeconds*time.Second {
+		if !hostinfo.lastRoam.IsZero() && addr.Equals(*hostinfo.lastRoamRemote) && time.Since(hostinfo.lastRoam) < RoamingSupressSeconds*time.Second {
 			l.Debug(
 				"suppressing roam back to previous remote",
 				zap.Any("supressDurationSecs", RoamingSupressSeconds),
@@ -180,7 +180,7 @@ func (f *Interface) handleHostRoaming(hostinfo *HostInfo, addr *udpAddr) {
 		hostinfo.lastRoam = time.Now()
 		remoteCopy := *hostinfo.remote
 		hostinfo.lastRoamRemote = &remoteCopy
-		hostinfo.SetRemote(*addr)
+		hostinfo.SetRemote(addr)
 		if f.lightHouse.amLighthouse {
 			f.lightHouse.AddRemote(hostinfo.hostId, addr, false)
 		}
@@ -188,7 +188,7 @@ func (f *Interface) handleHostRoaming(hostinfo *HostInfo, addr *udpAddr) {
 
 }
 
-func (f *Interface) handleEncrypted(ci *ConnectionState, addr *udpAddr, header *Header) bool {
+func (f *Interface) handleEncrypted(ci *ConnectionState, addr udpAddr, header *Header) bool {
 	// If connectionstate exists and the replay protector allows, process packet
 	// Else, send recv errors for 300 seconds after a restart to allow fast reconnection.
 	if ci == nil || !ci.window.Check(header.MessageCounter) {
@@ -325,7 +325,7 @@ func (f *Interface) decryptToTun(hostinfo *HostInfo, messageCounter uint64, out 
 	}
 }
 
-func (f *Interface) sendRecvError(endpoint *udpAddr, index uint32) {
+func (f *Interface) sendRecvError(endpoint udpAddr, index uint32) {
 	f.messageMetrics.Tx(recvError, 0, 1)
 
 	//TODO: this should be a signed message so we can trust that we should drop the index

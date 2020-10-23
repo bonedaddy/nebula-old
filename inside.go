@@ -251,7 +251,7 @@ func (f *Interface) sendNoMetrics(t NebulaMessageType, st NebulaMessageSubType, 
 		return c
 	}
 
-	err = f.outside.WriteTo(out, remote)
+	err = f.outside.WriteTo(out, *remote)
 	if err != nil {
 		hostinfo.logger().Error(
 			"failed to write outgoing packet",

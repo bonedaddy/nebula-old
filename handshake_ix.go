@@ -77,7 +77,7 @@ func ixHandshakeStage0(f *Interface, vpnIp uint32, hostinfo *HostInfo) {
 
 }
 
-func ixHandshakeStage1(f *Interface, addr *udpAddr, hostinfo *HostInfo, packet []byte, h *Header) bool {
+func ixHandshakeStage1(f *Interface, addr udpAddr, hostinfo *HostInfo, packet []byte, h *Header) bool {
 	var ip uint32
 	if h.RemoteIndex == 0 {
 		ci := f.newConnectionState(false, noise.HandshakeIX, []byte{}, 0)
@@ -300,7 +300,7 @@ func ixHandshakeStage1(f *Interface, addr *udpAddr, hostinfo *HostInfo, packet [
 			//l.Debugln("got symmetric pairs")
 
 			//hostinfo.ClearRemotes()
-			hostinfo.AddRemote(*addr)
+			hostinfo.AddRemote(addr)
 			hostinfo.CreateRemoteCIDR(remoteCert)
 			f.lightHouse.AddRemoteAndReset(ip, addr)
 			if f.serveDns {
@@ -461,9 +461,9 @@ func ixHandshakeStage2(f *Interface, addr *udpAddr, hostinfo *HostInfo, packet [
 		//l.Debugln("got symmetric pairs")
 
 		//hostinfo.ClearRemotes()
-		f.hostMap.AddRemote(ip, addr)
+		f.hostMap.AddRemote(ip, *addr)
 		hostinfo.CreateRemoteCIDR(remoteCert)
-		f.lightHouse.AddRemoteAndReset(ip, addr)
+		f.lightHouse.AddRemoteAndReset(ip, *addr)
 		if f.serveDns {
 			dnsR.Add(remoteCert.Details.Name+".", remoteCert.Details.Ips[0].IP.String())
 		}

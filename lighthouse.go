@@ -164,7 +164,7 @@ func (lh *LightHouse) DeleteVpnIP(vpnIP uint32) {
 	lh.Unlock()
 }
 
-func (lh *LightHouse) AddRemote(vpnIP uint32, toIp *udpAddr, static bool) {
+func (lh *LightHouse) AddRemote(vpnIP uint32, toIp udpAddr, static bool) {
 	// First we check if the sender thinks this is a static entry
 	// and do nothing if it is not, but should be considered static
 	if !static {
@@ -195,11 +195,11 @@ func (lh *LightHouse) AddRemote(vpnIP uint32, toIp *udpAddr, static bool) {
 	if static {
 		lh.staticList[vpnIP] = struct{}{}
 	}
-	lh.addrMap[vpnIP] = append(lh.addrMap[vpnIP], *toIp)
+	lh.addrMap[vpnIP] = append(lh.addrMap[vpnIP], toIp)
 	lh.Unlock()
 }
 
-func (lh *LightHouse) AddRemoteAndReset(vpnIP uint32, toIp *udpAddr) {
+func (lh *LightHouse) AddRemoteAndReset(vpnIP uint32, toIp udpAddr) {
 	if lh.amLighthouse {
 		lh.DeleteVpnIP(vpnIP)
 		lh.AddRemote(vpnIP, toIp, false)
@@ -239,7 +239,7 @@ func NewLhWhoami() *NebulaMeta {
 // End Quick generators for protobuf
 
 func NewIpAndPortFromUDPAddr(addr udpAddr) *IpAndPort {
-	return &IpAndPort{Ip: udp2ipInt(&addr), Port: uint32(addr.Port)}
+	return &IpAndPort{Ip: udp2ipInt(addr), Port: uint32(addr.Port)}
 }
 
 func NewIpAndPortsFromNetIps(ips []udpAddr) *[]*IpAndPort {

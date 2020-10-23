@@ -45,9 +45,9 @@ func TestControl_GetHostInfoByVpnIP(t *testing.T) {
 	}
 	counter := uint64(0)
 
-	remotes := []*HostInfoDest{NewHostInfoDest(remote1), NewHostInfoDest(remote2)}
+	remotes := []*HostInfoDest{NewHostInfoDest(&remote1), NewHostInfoDest(&remote2)}
 	hm.Add(ip2int(ipNet.IP), &HostInfo{
-		remote:  remote1,
+		remote:  &remote1,
 		Remotes: remotes,
 		ConnectionState: &ConnectionState{
 			peerCert:       crt,
@@ -59,7 +59,7 @@ func TestControl_GetHostInfoByVpnIP(t *testing.T) {
 	})
 
 	hm.Add(ip2int(ipNet2.IP), &HostInfo{
-		remote:  remote1,
+		remote:  &remote1,
 		Remotes: remotes,
 		ConnectionState: &ConnectionState{
 			peerCert:       nil,
@@ -83,11 +83,11 @@ func TestControl_GetHostInfoByVpnIP(t *testing.T) {
 		VpnIP:          net.IPv4(1, 2, 3, 4).To4(),
 		LocalIndex:     201,
 		RemoteIndex:    200,
-		RemoteAddrs:    []udpAddr{*remote1, *remote2},
+		RemoteAddrs:    []udpAddr{remote1, remote2},
 		CachedPackets:  0,
 		Cert:           crt.Copy(),
 		MessageCounter: 0,
-		CurrentRemote:  *NewUDPAddr(100, 4444),
+		CurrentRemote:  NewUDPAddr(100, 4444),
 	}
 
 	// Make sure we don't have any unexpected fields
