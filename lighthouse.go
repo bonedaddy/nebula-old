@@ -290,7 +290,7 @@ func (lh *LightHouse) LhUpdateWorker(f EncWriter) {
 	}
 }
 
-func (lh *LightHouse) HandleRequest(rAddr *udpAddr, vpnIp uint32, p []byte, c *cert.NebulaCertificate, f EncWriter) {
+func (lh *LightHouse) HandleRequest(rAddr udpAddr, vpnIp uint32, p []byte, c *cert.NebulaCertificate, f EncWriter) {
 	n := &NebulaMeta{}
 	err := proto.Unmarshal(p, n)
 	if err != nil {

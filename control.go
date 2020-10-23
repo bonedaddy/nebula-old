@@ -164,8 +164,8 @@ func copyHostInfo(h *HostInfo) ControlHostInfo {
 		chi.Cert = c.Copy()
 	}
 
-	if h.remote != nil {
-		chi.CurrentRemote = *h.remote
+	if h.remote.IP != 0 && h.remote.Port != 0 {
+		chi.CurrentRemote = h.remote
 	}
 
 	for i, addr := range addrs {

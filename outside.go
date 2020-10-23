@@ -17,7 +17,7 @@ const (
 	minFwPacketLen = 4
 )
 
-func (f *Interface) readOutsidePackets(addr *udpAddr, out []byte, packet []byte, header *Header, fwPacket *FirewallPacket, nb []byte) {
+func (f *Interface) readOutsidePackets(addr udpAddr, out []byte, packet []byte, header *Header, fwPacket *FirewallPacket, nb []byte) {
 	err := header.Parse(packet)
 	if err != nil {
 		// TODO: best if we return this and let caller log
@@ -46,7 +46,7 @@ func (f *Interface) readOutsidePackets(addr *udpAddr, out []byte, packet []byte,
 
 	switch header.Type {
 	case message:
-		if !f.handleEncrypted(ci, *addr, header) {
+		if !f.handleEncrypted(ci, addr, header) {
 			return
 		}
 
@@ -56,7 +56,7 @@ func (f *Interface) readOutsidePackets(addr *udpAddr, out []byte, packet []byte,
 
 	case lightHouse:
 		f.messageMetrics.Rx(header.Type, header.Subtype, 1)
-		if !f.handleEncrypted(ci, *addr, header) {
+		if !f.handleEncrypted(ci, addr, header) {
 			return
 		}
 
@@ -80,7 +80,7 @@ func (f *Interface) readOutsidePackets(addr *udpAddr, out []byte, packet []byte,
 
 	case test:
 		f.messageMetrics.Rx(header.Type, header.Subtype, 1)
-		if !f.handleEncrypted(ci, *addr, header) {
+		if !f.handleEncrypted(ci, addr, header) {
 			return
 		}
 
@@ -101,7 +101,7 @@ func (f *Interface) readOutsidePackets(addr *udpAddr, out []byte, packet []byte,
 		if header.Subtype == testRequest {
 			// This testRequest might be from TryPromoteBest, so we should roam
 			// to the new IP address before responding
-			f.handleHostRoaming(hostinfo, *addr)
+			f.handleHostRoaming(hostinfo, addr)
 			f.send(test, testReply, ci, hostinfo, hostinfo.remote, d, nb, out)
 		}
 
@@ -123,7 +123,7 @@ func (f *Interface) readOutsidePackets(addr *udpAddr, out []byte, packet []byte,
 
 	case closeTunnel:
 		f.messageMetrics.Rx(header.Type, header.Subtype, 1)
-		if !f.handleEncrypted(ci, *addr, header) {
+		if !f.handleEncrypted(ci, addr, header) {
 			return
 		}
 		hostinfo.logger().Info(
@@ -140,7 +140,7 @@ func (f *Interface) readOutsidePackets(addr *udpAddr, out []byte, packet []byte,
 		return
 	}
 
-	f.handleHostRoaming(hostinfo, *addr)
+	f.handleHostRoaming(hostinfo, addr)
 
 	f.connectionManager.In(hostinfo.hostId)
 }
@@ -178,7 +178,7 @@ func (f *Interface) handleHostRoaming(hostinfo *HostInfo, addr udpAddr) {
 		)
 
 		hostinfo.lastRoam = time.Now()
-		remoteCopy := *hostinfo.remote
+		remoteCopy := hostinfo.remote
 		hostinfo.lastRoamRemote = &remoteCopy
 		hostinfo.SetRemote(addr)
 		if f.lightHouse.amLighthouse {
@@ -339,7 +339,7 @@ func (f *Interface) sendRecvError(endpoint udpAddr, index uint32) {
 	)
 }
 
-func (f *Interface) handleRecvError(addr *udpAddr, h *Header) {
+func (f *Interface) handleRecvError(addr udpAddr, h *Header) {
 	// This flag is to stop caring about recv_error from old versions
 	// This should go away when the old version is gone from prod
 	l.Debug(
@@ -357,7 +357,7 @@ func (f *Interface) handleRecvError(addr *udpAddr, h *Header) {
 	if !hostinfo.RecvErrorExceeded() {
 		return
 	}
-	if hostinfo.remote != nil && hostinfo.remote.String() != addr.String() {
+	if hostinfo.remote.IP != 0 && hostinfo.remote.Port != 0 && hostinfo.remote.String() != addr.String() {
 		l.Warn(
 			"someone spoofing recv_errors??",
 			zap.Uint32("udpIp", addr.IP),

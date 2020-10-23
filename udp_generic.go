@@ -129,6 +129,6 @@ func udp2ipInt(addr *udpAddr) uint32 {
 	return binary.BigEndian.Uint32(addr.IP.To4())
 }
 
-func hostDidRoam(addr *udpAddr, newaddr *udpAddr) bool {
+func hostDidRoam(addr udpAddr, newaddr udpAddr) bool {
 	return !addr.Equals(newaddr)
 }

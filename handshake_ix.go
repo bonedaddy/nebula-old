@@ -16,7 +16,7 @@ import (
 // Sending is done by the handshake manager
 func ixHandshakeStage0(f *Interface, vpnIp uint32, hostinfo *HostInfo) {
 	// This queries the lighthouse if we don't know a remote for the host
-	if hostinfo.remote == nil {
+	if hostinfo.remote.IP == 0 || hostinfo.remote.Port == 0 {
 		ips, err := f.lightHouse.Query(vpnIp, f)
 		if err != nil {
 			l.Debug(err.Error())
@@ -347,7 +347,7 @@ func ixHandshakeStage1(f *Interface, addr udpAddr, hostinfo *HostInfo, packet []
 	return false
 }
 
-func ixHandshakeStage2(f *Interface, addr *udpAddr, hostinfo *HostInfo, packet []byte, h *Header) bool {
+func ixHandshakeStage2(f *Interface, addr udpAddr, hostinfo *HostInfo, packet []byte, h *Header) bool {
 	if hostinfo == nil {
 		return true
 	}
@@ -461,9 +461,9 @@ func ixHandshakeStage2(f *Interface, addr *udpAddr, hostinfo *HostInfo, packet [
 		//l.Debugln("got symmetric pairs")
 
 		//hostinfo.ClearRemotes()
-		f.hostMap.AddRemote(ip, *addr)
+		f.hostMap.AddRemote(ip, addr)
 		hostinfo.CreateRemoteCIDR(remoteCert)
-		f.lightHouse.AddRemoteAndReset(ip, *addr)
+		f.lightHouse.AddRemoteAndReset(ip, addr)
 		if f.serveDns {
 			dnsR.Add(remoteCert.Details.Name+".", remoteCert.Details.Ips[0].IP.String())
 		}

@@ -142,7 +142,7 @@ func (u *udpConn) ListenOut(f *Interface) {
 	plaintext := make([]byte, mtu)
 	header := &Header{}
 	fwPacket := &FirewallPacket{}
-	udpAddr := &udpAddr{}
+	udpAddr := udpAddr{}
 	nb := make([]byte, 12)
 
 	//TODO: should we track this?
@@ -287,7 +287,7 @@ func (ua *udpAddr) MarshalJSON() ([]byte, error) {
 	return json.Marshal(m{"ip": int2ip(ua.IP), "port": ua.Port})
 }
 
-func udp2ip(addr *udpAddr) net.IP {
+func udp2ip(addr udpAddr) net.IP {
 	return int2ip(addr.IP)
 }
 
@@ -295,6 +295,6 @@ func udp2ipInt(addr udpAddr) uint32 {
 	return addr.IP
 }
 
-func hostDidRoam(addr *udpAddr, newaddr udpAddr) bool {
+func hostDidRoam(addr udpAddr, newaddr udpAddr) bool {
 	return !addr.Equals(newaddr)
 }

@@ -47,7 +47,7 @@ func TestControl_GetHostInfoByVpnIP(t *testing.T) {
 
 	remotes := []*HostInfoDest{NewHostInfoDest(&remote1), NewHostInfoDest(&remote2)}
 	hm.Add(ip2int(ipNet.IP), &HostInfo{
-		remote:  &remote1,
+		remote:  remote1,
 		Remotes: remotes,
 		ConnectionState: &ConnectionState{
 			peerCert:       crt,
@@ -59,7 +59,7 @@ func TestControl_GetHostInfoByVpnIP(t *testing.T) {
 	})
 
 	hm.Add(ip2int(ipNet2.IP), &HostInfo{
-		remote:  &remote1,
+		remote:  remote1,
 		Remotes: remotes,
 		ConnectionState: &ConnectionState{
 			peerCert:       nil,

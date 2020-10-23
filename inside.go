@@ -212,16 +212,16 @@ func (f *Interface) SendMessageToAll(t NebulaMessageType, st NebulaMessageSubTyp
 
 func (f *Interface) sendMessageToAll(t NebulaMessageType, st NebulaMessageSubType, hostInfo *HostInfo, p, nb, b []byte) {
 	for _, r := range hostInfo.RemoteUDPAddrs() {
-		f.send(t, st, hostInfo.ConnectionState, hostInfo, r, p, nb, b)
+		f.send(t, st, hostInfo.ConnectionState, hostInfo, *r, p, nb, b)
 	}
 }
 
-func (f *Interface) send(t NebulaMessageType, st NebulaMessageSubType, ci *ConnectionState, hostinfo *HostInfo, remote *udpAddr, p, nb, out []byte) {
+func (f *Interface) send(t NebulaMessageType, st NebulaMessageSubType, ci *ConnectionState, hostinfo *HostInfo, remote udpAddr, p, nb, out []byte) {
 	f.messageMetrics.Tx(t, st, 1)
 	f.sendNoMetrics(t, st, ci, hostinfo, remote, p, nb, out)
 }
 
-func (f *Interface) sendNoMetrics(t NebulaMessageType, st NebulaMessageSubType, ci *ConnectionState, hostinfo *HostInfo, remote *udpAddr, p, nb, out []byte) uint64 {
+func (f *Interface) sendNoMetrics(t NebulaMessageType, st NebulaMessageSubType, ci *ConnectionState, hostinfo *HostInfo, remote udpAddr, p, nb, out []byte) uint64 {
 	if ci.eKey == nil {
 		//TODO: log warning
 		return 0
@@ -251,7 +251,7 @@ func (f *Interface) sendNoMetrics(t NebulaMessageType, st NebulaMessageSubType, 
 		return c
 	}
 
-	err = f.outside.WriteTo(out, *remote)
+	err = f.outside.WriteTo(out, remote)
 	if err != nil {
 		hostinfo.logger().Error(
 			"failed to write outgoing packet",

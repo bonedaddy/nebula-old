@@ -35,7 +35,7 @@ type HostMap struct {
 
 type HostInfo struct {
 	sync.RWMutex
-	remote            *udpAddr
+	remote            udpAddr
 	Remotes           []*HostInfoDest
 	promoteCounter    uint32
 	ConnectionState   *ConnectionState
@@ -292,7 +292,7 @@ func (hm *HostMap) AddRemote(vpnIp uint32, remote udpAddr) *HostInfo {
 			hostId:          vpnIp,
 			HandshakePacket: make(map[uint8][]byte),
 		}
-		i.remote = i.Remotes[0].addr
+		i.remote = *i.Remotes[0].addr
 		hm.Hosts[vpnIp] = i
 		l.Debug(
 			"hostmap remote ip added",
@@ -384,7 +384,7 @@ func (hm *HostMap) ClearRemotes(vpnIP uint32) {
 		hm.Unlock()
 		return
 	}
-	i.remote = nil
+	i.remote = udpAddr{}
 	i.Remotes = nil
 	hm.Unlock()
 }
@@ -472,7 +472,7 @@ func (i *HostInfo) BindConnectionState(cs *ConnectionState) {
 }
 
 func (i *HostInfo) TryPromoteBest(preferredRanges []*net.IPNet, ifce *Interface) {
-	if i.remote == nil {
+	if i.remote.IP == 0 || i.remote.Port == 0 {
 		i.ForcePromoteBest(preferredRanges)
 		return
 	}
@@ -496,10 +496,10 @@ func (i *HostInfo) TryPromoteBest(preferredRanges []*net.IPNet, ifce *Interface)
 		}
 
 		best, preferred := i.getBestRemote(preferredRanges)
-		if preferred && !best.Equals(*i.remote) {
+		if preferred && !best.Equals(i.remote) {
 			// Try to send a test packet to that host, this should
 			// cause it to detect a roaming event and switch remotes
-			ifce.send(test, testRequest, i.ConnectionState, i, best, []byte(""), make([]byte, 12), make([]byte, mtu))
+			ifce.send(test, testRequest, i.ConnectionState, i, *best, []byte(""), make([]byte, 12), make([]byte, mtu))
 		}
 	}
 }
@@ -507,14 +507,14 @@ func (i *HostInfo) TryPromoteBest(preferredRanges []*net.IPNet, ifce *Interface)
 func (i *HostInfo) ForcePromoteBest(preferredRanges []*net.IPNet) {
 	best, _ := i.getBestRemote(preferredRanges)
 	if best != nil {
-		i.remote = best
+		i.remote = *best
 	}
 }
 
 func (i *HostInfo) getBestRemote(preferredRanges []*net.IPNet) (best *udpAddr, preferred bool) {
 	if len(i.Remotes) > 0 {
 		for _, r := range i.Remotes {
-			rIP := udp2ip(r.addr)
+			rIP := udp2ip(*r.addr)
 
 			for _, l := range preferredRanges {
 				if l.Contains(rIP) {
@@ -555,22 +555,22 @@ func (i *HostInfo) rotateRemote() {
 		return
 	}
 
-	if i.remote == nil {
-		i.remote = i.Remotes[0].addr
+	if i.remote.IP == 0 || i.remote.Port == 0 {
+		i.remote = *i.Remotes[0].addr
 		return
 	}
 
 	// We want to look at all but the very last entry since that is handled at the end
 	for x := 0; x < len(i.Remotes)-1; x++ {
 		// Find our current position and move to the next one in the list
-		if i.Remotes[x].addr.Equals(*i.remote) {
-			i.remote = i.Remotes[x+1].addr
+		if i.Remotes[x].addr.Equals(i.remote) {
+			i.remote = *i.Remotes[x+1].addr
 			return
 		}
 	}
 
 	// Our current position was likely the last in the list, start over at 0
-	i.remote = i.Remotes[0].addr
+	i.remote = *i.Remotes[0].addr
 }
 
 func (i *HostInfo) cachePacket(t NebulaMessageType, st NebulaMessageSubType, packet []byte, f packetCallback) {
@@ -655,12 +655,12 @@ func (i *HostInfo) AddRemote(r udpAddr) *udpAddr {
 
 func (i *HostInfo) SetRemote(remote udpAddr) {
 	i.Lock()
-	i.remote = i.AddRemote(remote)
+	i.remote = *i.AddRemote(remote)
 	i.Unlock()
 }
 
 func (i *HostInfo) ClearRemotes() {
-	i.remote = nil
+	i.remote = udpAddr{}
 	i.Remotes = []*HostInfoDest{}
 }
 

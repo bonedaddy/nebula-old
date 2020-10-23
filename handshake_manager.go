@@ -117,7 +117,7 @@ func (c *HandshakeManager) handleOutbound(vpnIP uint32, f EncWriter, lighthouseT
 	// If we haven't finished the handshake and we haven't hit max retries, query
 	// lighthouse and then send the handshake packet again.
 	if hostinfo.HandshakeCounter < c.config.retries && !hostinfo.HandshakeComplete {
-		if hostinfo.remote == nil {
+		if hostinfo.remote.IP == 0 || hostinfo.remote.Port == 0 {
 			// We continue to query the lighthouse because hosts may
 			// come online during handshake retries. If the query
 			// succeeds (no error), add the lighthouse info to hostinfo
@@ -152,10 +152,10 @@ func (c *HandshakeManager) handleOutbound(vpnIP uint32, f EncWriter, lighthouseT
 		}
 
 		// Ensure the handshake is ready to avoid a race in timer tick and stage 0 handshake generation
-		if hostinfo.HandshakeReady && hostinfo.remote != nil {
+		if hostinfo.HandshakeReady && hostinfo.remote.IP != 0 && hostinfo.remote.Port != 0 {
 
 			c.messageMetrics.Tx(handshake, NebulaMessageSubType(hostinfo.HandshakePacket[0][1]), 1)
-			err := c.outside.WriteTo(hostinfo.HandshakePacket[0], *hostinfo.remote)
+			err := c.outside.WriteTo(hostinfo.HandshakePacket[0], hostinfo.remote)
 
 			if err != nil {
 				hostinfo.logger().Error(
