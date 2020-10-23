@@ -22,7 +22,7 @@ type udpConn struct {
 	*net.UDPConn
 }
 
-func NewUDPAddr(ip uint32, port uint16) *udpAddr {
+func NewUDPAddr(ip uint32, port uint16) udpAddr {
 	return &udpAddr{
 		UDPAddr: net.UDPAddr{
 			IP:   int2ip(ip),
@@ -31,7 +31,7 @@ func NewUDPAddr(ip uint32, port uint16) *udpAddr {
 	}
 }
 
-func NewUDPAddrFromString(s string) *udpAddr {
+func NewUDPAddrFromString(s string) udpAddr {
 	p := strings.Split(s, ":")
 	if len(p) < 2 {
 		return nil
@@ -58,14 +58,14 @@ func NewListener(ip string, port int, multi bool) (*udpConn, error) {
 	return nil, fmt.Errorf("Unexpected PacketConn: %T %#v", pc, pc)
 }
 
-func (ua *udpAddr) Equals(t *udpAddr) bool {
+func (ua udpAddr) Equals(t udpAddr) bool {
 	if t == nil || ua == nil {
 		return t == nil && ua == nil
 	}
 	return ua.IP.Equal(t.IP) && ua.Port == t.Port
 }
 
-func (ua *udpAddr) Copy() udpAddr {
+func (ua udpAddr) Copy() udpAddr {
 	nu := udpAddr{net.UDPAddr{
 		Port: ua.Port,
 		Zone: ua.Zone,
@@ -76,12 +76,12 @@ func (ua *udpAddr) Copy() udpAddr {
 	return nu
 }
 
-func (uc *udpConn) WriteTo(b []byte, addr *udpAddr) error {
+func (uc *udpConn) WriteTo(b []byte, addr udpAddr) error {
 	_, err := uc.UDPConn.WriteToUDP(b, &addr.UDPAddr)
 	return err
 }
 
-func (uc *udpConn) LocalAddr() (*udpAddr, error) {
+func (uc *udpConn) LocalAddr() (udpAddr, error) {
 	a := uc.UDPConn.LocalAddr()
 
 	switch v := a.(type) {
@@ -121,11 +121,11 @@ func (u *udpConn) ListenOut(f *Interface) {
 	}
 }
 
-func udp2ip(addr *udpAddr) net.IP {
+func udp2ip(addr udpAddr) net.IP {
 	return addr.IP
 }
 
-func udp2ipInt(addr *udpAddr) uint32 {
+func udp2ipInt(addr udpAddr) uint32 {
 	return binary.BigEndian.Uint32(addr.IP.To4())
 }
 

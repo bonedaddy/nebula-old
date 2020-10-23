@@ -45,7 +45,7 @@ func TestControl_GetHostInfoByVpnIP(t *testing.T) {
 	}
 	counter := uint64(0)
 
-	remotes := []*HostInfoDest{NewHostInfoDest(&remote1), NewHostInfoDest(&remote2)}
+	remotes := []*HostInfoDest{NewHostInfoDest(remote1), NewHostInfoDest(remote2)}
 	hm.Add(ip2int(ipNet.IP), &HostInfo{
 		remote:  remote1,
 		Remotes: remotes,

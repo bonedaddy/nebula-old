@@ -92,7 +92,7 @@ func (u *udpConn) Rebind() error {
 	return nil
 }
 
-func (ua *udpAddr) Copy() udpAddr {
+func (ua udpAddr) Copy() udpAddr {
 	return udpAddr{IP: ua.IP, Port: ua.Port}
 }
 
@@ -112,7 +112,7 @@ func (u *udpConn) GetSendBuffer() (int, error) {
 	return unix.GetsockoptInt(int(u.sysFd), unix.SOL_SOCKET, unix.SO_SNDBUF)
 }
 
-func (u *udpConn) LocalAddr() (*udpAddr, error) {
+func (u *udpConn) LocalAddr() (udpAddr, error) {
 	var rsa rawSockaddrAny
 	var rLen = unix.SizeofSockaddrAny
 
@@ -124,10 +124,10 @@ func (u *udpConn) LocalAddr() (*udpAddr, error) {
 	)
 
 	if err != 0 {
-		return nil, err
+		return udpAddr{}, err
 	}
 
-	addr := &udpAddr{}
+	addr := udpAddr{}
 	if rsa.Addr.Family == unix.AF_INET {
 		addr.Port = uint16(rsa.Addr.Data[0])<<8 + uint16(rsa.Addr.Data[1])
 		addr.IP = uint32(rsa.Addr.Data[2])<<24 + uint32(rsa.Addr.Data[3])<<16 + uint32(rsa.Addr.Data[4])<<8 + uint32(rsa.Addr.Data[5])
@@ -272,18 +272,18 @@ func (u *udpConn) reloadConfig(c *Config) {
 	}
 }
 
-func (ua *udpAddr) Equals(t udpAddr) bool {
-	if t.Port == 0 || t.IP == 0 || ua == nil {
-		return t == udpAddr{} && ua == nil
+func (ua udpAddr) Equals(t udpAddr) bool {
+	if t.Port == 0 || t.IP == 0 || ua.IP == 0 || ua.Port == 0 {
+		return t == udpAddr{} && ua.IP == 0 && ua.Port == 0
 	}
 	return ua.IP == t.IP && ua.Port == t.Port
 }
 
-func (ua *udpAddr) String() string {
+func (ua udpAddr) String() string {
 	return fmt.Sprintf("%s:%v", int2ip(ua.IP), ua.Port)
 }
 
-func (ua *udpAddr) MarshalJSON() ([]byte, error) {
+func (ua udpAddr) MarshalJSON() ([]byte, error) {
 	return json.Marshal(m{"ip": int2ip(ua.IP), "port": ua.Port})
 }
 

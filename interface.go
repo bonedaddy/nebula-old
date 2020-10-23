@@ -148,7 +148,7 @@ func (f *Interface) listenOut(i int) {
 	var li *udpConn
 	if i > 0 {
 		//TODO: handle error
-		li, err = NewListener(udp2ip(*addr).String(), int(addr.Port), i > 0)
+		li, err = NewListener(udp2ip(addr).String(), int(addr.Port), i > 0)
 		if err != nil {
 			l.Error("failed to make a new udp listener", zap.Error(err))
 		}

@@ -160,7 +160,7 @@ func (f *Interface) handleHostRoaming(hostinfo *HostInfo, addr udpAddr) {
 			hostinfo.logger().Debug("lighthouse.remote_allow_list denied roaming", zap.Any("newAddr", addr))
 			return
 		}
-		if !hostinfo.lastRoam.IsZero() && addr.Equals(*hostinfo.lastRoamRemote) && time.Since(hostinfo.lastRoam) < RoamingSupressSeconds*time.Second {
+		if !hostinfo.lastRoam.IsZero() && addr.Equals(hostinfo.lastRoamRemote) && time.Since(hostinfo.lastRoam) < RoamingSupressSeconds*time.Second {
 			l.Debug(
 				"suppressing roam back to previous remote",
 				zap.Any("supressDurationSecs", RoamingSupressSeconds),
@@ -179,7 +179,7 @@ func (f *Interface) handleHostRoaming(hostinfo *HostInfo, addr udpAddr) {
 
 		hostinfo.lastRoam = time.Now()
 		remoteCopy := hostinfo.remote
-		hostinfo.lastRoamRemote = &remoteCopy
+		hostinfo.lastRoamRemote = remoteCopy
 		hostinfo.SetRemote(addr)
 		if f.lightHouse.amLighthouse {
 			f.lightHouse.AddRemote(hostinfo.hostId, addr, false)
