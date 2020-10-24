@@ -15,7 +15,7 @@ import (
 	"go.uber.org/zap"
 )
 
-type sshStatsVizFlags struct {
+type sshProfilerFlags struct {
 	Addr         string
 	DisablePprof bool
 	DisableViz   bool
@@ -175,14 +175,14 @@ func attachCommands(ssh *sshd.SSHServer, hostMap *HostMap, pendingHostMap *HostM
 		ShortDescription: "start the runtime profiler and visualization server",
 		Flags: func() (*flag.FlagSet, interface{}) {
 			fl := flag.NewFlagSet("", flag.ContinueOnError)
-			s := sshStatsVizFlags{}
+			s := sshProfilerFlags{}
 			fl.StringVar(&s.Addr, "address", "0.0.0.0:2345", "address of http server")
 			fl.BoolVar(&s.DisablePprof, "disable-pprof", false, "disables registering net/http/pprof handlers")
 			fl.BoolVar(&s.DisableViz, "disable-visualizer", false, "disables the statsviz runtime visualizer")
 			return fl, &s
 		},
 		Callback: func(fs interface{}, a []string, w sshd.StringWriter) error {
-			flags, ok := fs.(*sshStatsVizFlags)
+			flags, ok := fs.(*sshProfilerFlags)
 			if !ok {
 				//TODO: error
 				return nil
