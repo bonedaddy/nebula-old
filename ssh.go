@@ -16,7 +16,9 @@ import (
 )
 
 type sshStatsVizFlags struct {
-	Addr string
+	Addr         string
+	DisablePprof bool
+	DisableViz   bool
 }
 
 type sshListHostMapFlags struct {
@@ -167,14 +169,16 @@ func configSSH(ssh *sshd.SSHServer, c *Config) error {
 }
 
 func attachCommands(ssh *sshd.SSHServer, hostMap *HostMap, pendingHostMap *HostMap, lightHouse *LightHouse, ifce *Interface) {
-	stsv := newStatsViz()
+	profiler := newProfileServer()
 	ssh.RegisterCommand(&sshd.Command{
-		Name:             "start-statsviz",
-		ShortDescription: "starts the statszviz go runtime visualizer",
+		Name:             "start-profiler",
+		ShortDescription: "start the runtime profiler and visualization server",
 		Flags: func() (*flag.FlagSet, interface{}) {
 			fl := flag.NewFlagSet("", flag.ContinueOnError)
 			s := sshStatsVizFlags{}
-			fl.StringVar(&s.Addr, "address", "0.0.0.0:2345", "address to serve statsviz on")
+			fl.StringVar(&s.Addr, "address", "0.0.0.0:2345", "address of http server")
+			fl.BoolVar(&s.DisablePprof, "disable-pprof", false, "disables registering net/http/pprof handlers")
+			fl.BoolVar(&s.DisableViz, "disable-visualizer", false, "disables the statsviz runtime visualizer")
 			return fl, &s
 		},
 		Callback: func(fs interface{}, a []string, w sshd.StringWriter) error {
@@ -183,22 +187,16 @@ func attachCommands(ssh *sshd.SSHServer, hostMap *HostMap, pendingHostMap *HostM
 				//TODO: error
 				return nil
 			}
-			stsv.Start(flags.Addr)
-			return nil // wip
+			profiler.Start(flags.Addr, flags.DisablePprof, flags.DisableViz)
+			return nil
 		},
 	})
 	ssh.RegisterCommand(&sshd.Command{
-		Name:             "stop-statsviz",
-		ShortDescription: "stops the statszviz go runtime visualizer",
-		Flags: func() (*flag.FlagSet, interface{}) {
-			fl := flag.NewFlagSet("", flag.ContinueOnError)
-			s := sshStatsVizFlags{}
-			fl.StringVar(&s.Addr, "address", "0.0.0.0:2345", "address to serve statsviz on")
-			return fl, &s
-		},
+		Name:             "stop-profiler",
+		ShortDescription: "start the runtime profiler and visualization server",
 		Callback: func(fs interface{}, a []string, w sshd.StringWriter) error {
-			stsv.Reset()
-			return nil // wip
+			profiler.Reset()
+			return nil
 		},
 	})
 	ssh.RegisterCommand(&sshd.Command{
