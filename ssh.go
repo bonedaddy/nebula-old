@@ -15,6 +15,12 @@ import (
 	"go.uber.org/zap"
 )
 
+type sshProfilerFlags struct {
+	Addr         string
+	DisablePprof bool
+	DisableViz   bool
+}
+
 type sshListHostMapFlags struct {
 	Json   bool
 	Pretty bool
@@ -163,6 +169,36 @@ func configSSH(ssh *sshd.SSHServer, c *Config) error {
 }
 
 func attachCommands(ssh *sshd.SSHServer, hostMap *HostMap, pendingHostMap *HostMap, lightHouse *LightHouse, ifce *Interface) {
+	profiler := newProfileServer()
+	ssh.RegisterCommand(&sshd.Command{
+		Name:             "start-profiler",
+		ShortDescription: "start the runtime profiler and visualization server",
+		Flags: func() (*flag.FlagSet, interface{}) {
+			fl := flag.NewFlagSet("", flag.ContinueOnError)
+			s := sshProfilerFlags{}
+			fl.StringVar(&s.Addr, "address", "0.0.0.0:2345", "address of http server")
+			fl.BoolVar(&s.DisablePprof, "disable-pprof", false, "disables registering net/http/pprof handlers")
+			fl.BoolVar(&s.DisableViz, "disable-visualizer", false, "disables the statsviz runtime visualizer")
+			return fl, &s
+		},
+		Callback: func(fs interface{}, a []string, w sshd.StringWriter) error {
+			flags, ok := fs.(*sshProfilerFlags)
+			if !ok {
+				//TODO: error
+				return nil
+			}
+			profiler.Start(flags.Addr, flags.DisablePprof, flags.DisableViz)
+			return nil
+		},
+	})
+	ssh.RegisterCommand(&sshd.Command{
+		Name:             "stop-profiler",
+		ShortDescription: "start the runtime profiler and visualization server",
+		Callback: func(fs interface{}, a []string, w sshd.StringWriter) error {
+			profiler.Reset()
+			return nil
+		},
+	})
 	ssh.RegisterCommand(&sshd.Command{
 		Name:             "list-hostmap",
 		ShortDescription: "List all known previously connected hosts",
