@@ -50,6 +50,7 @@ type conn struct {
 
 // TODO: need conntrack max tracked connections handling
 type Firewall struct {
+	sync.RWMutex
 	Conntrack *FirewallConntrack
 
 	InRules  *FirewallTable
@@ -72,13 +73,14 @@ type Firewall struct {
 }
 
 type FirewallConntrack struct {
-	sync.Mutex
+	sync.RWMutex
 
 	Conns      map[FirewallPacket]*conn
 	TimerWheel *TimerWheel
 }
 
 type FirewallTable struct {
+	sync.RWMutex
 	TCP      firewallPort
 	UDP      firewallPort
 	ICMP     firewallPort
@@ -233,7 +235,10 @@ func (f *Firewall) AddRule(incoming bool, proto uint8, startPort int32, endPort 
 		"incoming: %v, proto: %v, startPort: %v, endPort: %v, groups: %v, host: %v, ip: %v, caName: %v, caSha: %s",
 		incoming, proto, startPort, endPort, groups, host, sIp, caName, caSha,
 	)
+
+	f.Lock()
 	f.rules += ruleString + "\n"
+	f.Unlock()
 
 	direction := "incoming"
 	if !incoming {
@@ -257,11 +262,13 @@ func (f *Firewall) AddRule(incoming bool, proto uint8, startPort int32, endPort 
 		fp firewallPort
 	)
 
+	f.RLock()
 	if incoming {
 		ft = f.InRules
 	} else {
 		ft = f.OutRules
 	}
+	f.RUnlock()
 
 	switch proto {
 	case fwProtoTCP:
@@ -434,38 +441,46 @@ func (f *Firewall) Destroy() {
 
 func (f *Firewall) EmitStats() {
 	conntrack := f.Conntrack
-	conntrack.Lock()
+	conntrack.RLock()
 	conntrackCount := len(conntrack.Conns)
-	conntrack.Unlock()
+	conntrack.RUnlock()
+	f.RLock()
+	rulesVersion := f.rulesVersion
+	f.RUnlock()
 	metrics.GetOrRegisterGauge("firewall.conntrack.count", nil).Update(int64(conntrackCount))
-	metrics.GetOrRegisterGauge("firewall.rules.version", nil).Update(int64(f.rulesVersion))
+	metrics.GetOrRegisterGauge("firewall.rules.version", nil).Update(int64(rulesVersion))
 }
 
 func (f *Firewall) inConns(packet []byte, fp FirewallPacket, incoming bool, h *HostInfo, caPool *cert.NebulaCAPool) bool {
 	conntrack := f.Conntrack
-	conntrack.Lock()
-
 	// Purge every time we test
 	ep, has := conntrack.TimerWheel.Purge()
 	if has {
+		f.Lock()
 		f.evict(ep)
+		f.Unlock()
 	}
-
+	conntrack.RLock()
 	c, ok := conntrack.Conns[fp]
-
+	conntrack.RUnlock()
 	if !ok {
-		conntrack.Unlock()
 		return false
 	}
 
-	if c.rulesVersion != f.rulesVersion {
-		// This conntrack entry was for an older rule set, validate
-		// it still passes with the current rule set
-		table := f.OutRules
-		if c.incoming {
-			table = f.InRules
-		}
+	f.RLock()
+	// defer f.RUnlock()
+	conntrack.RLock()
+	table := f.OutRules
+	if c.incoming {
+		table = f.InRules
+	}
+	cRulesVersion := c.rulesVersion
+	fRulesVersion := f.rulesVersion
+	f.RUnlock()
+	conntrack.RUnlock()
+	//defer conntrack.Unlock()
 
+	if cRulesVersion != fRulesVersion {
 		// We now know which firewall table to check against
 		if !table.match(fp, c.incoming, h.ConnectionState.peerCert, caPool) {
 			l.Debug(
@@ -475,6 +490,7 @@ func (f *Firewall) inConns(packet []byte, fp FirewallPacket, incoming bool, h *H
 				zap.Uint16("rulesVersion", f.rulesVersion),
 				zap.Uint16("oldRulesVersion", c.rulesVersion),
 			)
+			conntrack.Lock()
 			delete(conntrack.Conns, fp)
 			conntrack.Unlock()
 			return false
@@ -488,7 +504,10 @@ func (f *Firewall) inConns(packet []byte, fp FirewallPacket, incoming bool, h *H
 		)
 		c.rulesVersion = f.rulesVersion
 	}
-
+	f.RLock()
+	conntrack.Lock()
+	defer conntrack.Unlock()
+	defer f.RUnlock()
 	switch fp.Protocol {
 	case fwProtoTCP:
 		c.Expires = time.Now().Add(f.TCPTimeout)
@@ -502,8 +521,6 @@ func (f *Firewall) inConns(packet []byte, fp FirewallPacket, incoming bool, h *H
 	default:
 		c.Expires = time.Now().Add(f.DefaultTimeout)
 	}
-
-	conntrack.Unlock()
 
 	return true
 }
@@ -563,6 +580,8 @@ func (f *Firewall) evict(p FirewallPacket) {
 }
 
 func (ft *FirewallTable) match(p FirewallPacket, incoming bool, c *cert.NebulaCertificate, caPool *cert.NebulaCAPool) bool {
+	ft.RLock()
+	defer ft.RUnlock()
 	if ft.AnyProto.match(p, incoming, c, caPool) {
 		return true
 	}
