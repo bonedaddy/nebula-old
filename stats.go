@@ -6,14 +6,84 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"sync"
 	"time"
 
+	"github.com/arl/statsviz"
 	graphite "github.com/cyberdelia/go-metrics-graphite"
 	mp "github.com/nbrownus/go-metrics-prometheus"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rcrowley/go-metrics"
+	"go.uber.org/atomic"
 )
+
+// helper object to start up a statsviz server
+// primarily intended for use with the sshd management port
+// however it could potentially be started at node startup as well
+type statsvizServer struct {
+	sync.Mutex
+	start   *sync.Once
+	running *atomic.Bool
+	stop    chan struct{}
+}
+
+func newStatsViz() *statsvizServer {
+	return &statsvizServer{
+		start:   &sync.Once{},
+		running: atomic.NewBool(false),
+		stop:    make(chan struct{}),
+	}
+}
+
+func (s *statsvizServer) Start(addr string) {
+	// prevent a panic
+	if s.start == nil {
+		l.Error("statsvizServer object not properly initialized")
+		return
+	}
+	s.Lock()
+	defer s.Unlock()
+	s.start.Do(func() {
+		s.running.Store(true)
+		mux := http.NewServeMux()
+		statsviz.Register(mux)
+		srv := &http.Server{
+			Addr:    addr,
+			Handler: mux,
+		}
+		go srv.ListenAndServe()
+		go func() {
+			<-s.stop
+			srv.Close()
+			s.running.Store(false)
+		}()
+	})
+}
+
+// used to stop the statsviz server but prepares the struct
+// for being able to startup another server
+func (s *statsvizServer) Reset() {
+	if !s.running.Load() {
+		return
+	}
+	s.Stop()
+	for {
+		if s.running.Load() {
+			time.Sleep(time.Microsecond * 250)
+			continue
+		}
+		break
+	}
+	s.Lock()
+	defer s.Unlock()
+	s.start = &sync.Once{}
+}
+
+// note: tthis will block, maybe we should do a non-blocking send?
+func (s *statsvizServer) Stop() {
+	s.stop <- struct{}{}
+}
 
 func startStats(c *Config, configTest bool) error {
 	mType := c.GetString("stats.type", "")

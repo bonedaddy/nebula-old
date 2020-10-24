@@ -15,6 +15,10 @@ import (
 	"go.uber.org/zap"
 )
 
+type sshStatsVizFlags struct {
+	Addr string
+}
+
 type sshListHostMapFlags struct {
 	Json   bool
 	Pretty bool
@@ -163,6 +167,40 @@ func configSSH(ssh *sshd.SSHServer, c *Config) error {
 }
 
 func attachCommands(ssh *sshd.SSHServer, hostMap *HostMap, pendingHostMap *HostMap, lightHouse *LightHouse, ifce *Interface) {
+	stsv := newStatsViz()
+	ssh.RegisterCommand(&sshd.Command{
+		Name:             "start-statsviz",
+		ShortDescription: "starts the statszviz go runtime visualizer",
+		Flags: func() (*flag.FlagSet, interface{}) {
+			fl := flag.NewFlagSet("", flag.ContinueOnError)
+			s := sshStatsVizFlags{}
+			fl.StringVar(&s.Addr, "address", "0.0.0.0:2345", "address to serve statsviz on")
+			return fl, &s
+		},
+		Callback: func(fs interface{}, a []string, w sshd.StringWriter) error {
+			flags, ok := fs.(*sshStatsVizFlags)
+			if !ok {
+				//TODO: error
+				return nil
+			}
+			stsv.Start(flags.Addr)
+			return nil // wip
+		},
+	})
+	ssh.RegisterCommand(&sshd.Command{
+		Name:             "stop-statsviz",
+		ShortDescription: "stops the statszviz go runtime visualizer",
+		Flags: func() (*flag.FlagSet, interface{}) {
+			fl := flag.NewFlagSet("", flag.ContinueOnError)
+			s := sshStatsVizFlags{}
+			fl.StringVar(&s.Addr, "address", "0.0.0.0:2345", "address to serve statsviz on")
+			return fl, &s
+		},
+		Callback: func(fs interface{}, a []string, w sshd.StringWriter) error {
+			stsv.Reset()
+			return nil // wip
+		},
+	})
 	ssh.RegisterCommand(&sshd.Command{
 		Name:             "list-hostmap",
 		ShortDescription: "List all known previously connected hosts",
