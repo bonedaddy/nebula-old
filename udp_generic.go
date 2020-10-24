@@ -7,15 +7,17 @@ package nebula
 
 import (
 	"context"
-	"encoding/binary"
 	"fmt"
 	"net"
 	"strconv"
 	"strings"
+
+	"go.uber.org/zap"
 )
 
 type udpAddr struct {
-	net.UDPAddr
+	IP   uint32
+	Port uint16
 }
 
 type udpConn struct {
@@ -23,12 +25,7 @@ type udpConn struct {
 }
 
 func NewUDPAddr(ip uint32, port uint16) *udpAddr {
-	return &udpAddr{
-		UDPAddr: net.UDPAddr{
-			IP:   int2ip(ip),
-			Port: int(port),
-		},
-	}
+	return &udpAddr{IP: ip, Port: port}
 }
 
 func NewUDPAddrFromString(s string) *udpAddr {
@@ -39,10 +36,8 @@ func NewUDPAddrFromString(s string) *udpAddr {
 
 	port, _ := strconv.Atoi(p[1])
 	return &udpAddr{
-		UDPAddr: net.UDPAddr{
-			IP:   net.ParseIP(p[0]),
-			Port: port,
-		},
+		IP:   ip2int(net.ParseIP(p[0])),
+		Port: uint16(port),
 	}
 }
 
@@ -62,22 +57,19 @@ func (ua *udpAddr) Equals(t *udpAddr) bool {
 	if t == nil || ua == nil {
 		return t == nil && ua == nil
 	}
-	return ua.IP.Equal(t.IP) && ua.Port == t.Port
+	return ua.IP == t.IP && ua.Port == t.Port
 }
 
 func (ua *udpAddr) Copy() udpAddr {
-	nu := udpAddr{net.UDPAddr{
-		Port: ua.Port,
-		Zone: ua.Zone,
-		IP:   make(net.IP, len(ua.IP)),
-	}}
-
-	copy(nu.IP, ua.IP)
-	return nu
+	return *ua
 }
 
 func (uc *udpConn) WriteTo(b []byte, addr *udpAddr) error {
-	_, err := uc.UDPConn.WriteToUDP(b, &addr.UDPAddr)
+
+	_, err := uc.UDPConn.WriteToUDP(b, &net.UDPAddr{
+		IP:   int2ip(addr.IP),
+		Port: int(addr.Port),
+	})
 	return err
 }
 
@@ -86,7 +78,7 @@ func (uc *udpConn) LocalAddr() (*udpAddr, error) {
 
 	switch v := a.(type) {
 	case *net.UDPAddr:
-		return &udpAddr{UDPAddr: *v}, nil
+		return &udpAddr{IP: ip2int(v.IP), Port: uint16(v.Port)}, nil
 	default:
 		return nil, fmt.Errorf("LocalAddr returned: %#v", a)
 	}
@@ -112,23 +104,28 @@ func (u *udpConn) ListenOut(f *Interface) {
 		// Just read one packet at a time
 		n, rua, err := u.ReadFromUDP(buffer)
 		if err != nil {
-			l.WithError(err).Error("Failed to read packets")
+			l.Error("failed to read packets", zap.Error(err))
 			continue
 		}
 
-		udpAddr.UDPAddr = *rua
+		udpAddr.IP = ip2int(rua.IP)
+		udpAddr.Port = uint16(rua.Port)
 		f.readOutsidePackets(udpAddr, plaintext[:0], buffer[:n], header, fwPacket, nb)
 	}
 }
 
 func udp2ip(addr *udpAddr) net.IP {
-	return addr.IP
+	return int2ip(addr.IP)
 }
 
 func udp2ipInt(addr *udpAddr) uint32 {
-	return binary.BigEndian.Uint32(addr.IP.To4())
+	return addr.IP
 }
 
 func hostDidRoam(addr *udpAddr, newaddr *udpAddr) bool {
 	return !addr.Equals(newaddr)
+}
+
+func (ua *udpAddr) String() string {
+	return fmt.Sprintf("%s:%v", int2ip(ua.IP), ua.Port)
 }
