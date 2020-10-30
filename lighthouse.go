@@ -1,6 +1,7 @@
 package nebula
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"sync"
@@ -8,8 +9,12 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/rcrowley/go-metrics"
-	"github.com/slackhq/nebula/cert"
 	"go.uber.org/zap"
+)
+
+var (
+	// ErrHostNotKnown is an error returned when we do not know this host
+	ErrHostNotKnown = errors.New("host not known")
 )
 
 type LightHouse struct {
@@ -114,7 +119,7 @@ func (lh *LightHouse) Query(ip uint32, f EncWriter) ([]udpAddr, error) {
 		return v, nil
 	}
 	lh.RUnlock()
-	return nil, fmt.Errorf("host %s not known, queries sent to lighthouses", IntIp(ip))
+	return nil, ErrHostNotKnown
 }
 
 // This is asynchronous so no reply should be expected
@@ -238,17 +243,8 @@ func NewLhWhoami() *NebulaMeta {
 
 // End Quick generators for protobuf
 
-func NewIpAndPortFromUDPAddr(addr udpAddr) *IpAndPort {
-	return &IpAndPort{Ip: udp2ipInt(&addr), Port: uint32(addr.Port)}
-}
-
-func NewIpAndPortsFromNetIps(ips []udpAddr) *[]*IpAndPort {
-	var iap []*IpAndPort
-	for _, e := range ips {
-		// Only add IPs that aren't my VPN/tun IP
-		iap = append(iap, NewIpAndPortFromUDPAddr(e))
-	}
-	return &iap
+func NewIpAndPortFromUDPAddr(addr udpAddr) IpAndPort {
+	return IpAndPort{Ip: udp2ipInt(&addr), Port: uint32(addr.Port)}
 }
 
 func (lh *LightHouse) LhUpdateWorker(f EncWriter) {
@@ -287,152 +283,6 @@ func (lh *LightHouse) LhUpdateWorker(f EncWriter) {
 
 		}
 		time.Sleep(time.Second * time.Duration(lh.interval))
-	}
-}
-
-func (lh *LightHouse) HandleRequest(rAddr *udpAddr, vpnIp uint32, p []byte, c *cert.NebulaCertificate, f EncWriter) {
-	n := &NebulaMeta{}
-	err := proto.Unmarshal(p, n)
-	if err != nil {
-		l.Error(
-			"failed to unmarshal lighthouse packet",
-			zap.Uint32("vpnIp", uint32(IntIp(vpnIp))),
-			zap.Uint32("udpIp", rAddr.IP),
-			zap.Uint16("udpPort", rAddr.Port),
-			zap.Error(err),
-		)
-		//TODO: send recv_error?
-		return
-	}
-
-	if n.Details == nil {
-		l.Error(
-			"invalid lighthouse update",
-			zap.Uint32("vpnIp", uint32(IntIp(vpnIp))),
-			zap.Uint32("udpIp", rAddr.IP),
-			zap.Uint16("udpPort", rAddr.Port),
-		)
-		//TODO: send recv_error?
-		return
-	}
-
-	lh.metricRx(n.Type, 1)
-
-	switch n.Type {
-	case NebulaMeta_HostQuery:
-		// Exit if we don't answer queries
-		if !lh.amLighthouse {
-			l.Sugar().Debugf("I don't answer queries, but received from: ", rAddr)
-			return
-		}
-
-		//l.Debugln("Got Query")
-		ips, err := lh.Query(n.Details.VpnIp, f)
-		if err != nil {
-			//l.Debugf("Can't answer query %s from %s because error: %s", IntIp(n.Details.VpnIp), rAddr, err)
-			return
-		} else {
-			iap := NewIpAndPortsFromNetIps(ips)
-			answer := &NebulaMeta{
-				Type: NebulaMeta_HostQueryReply,
-				Details: &NebulaMetaDetails{
-					VpnIp:      n.Details.VpnIp,
-					IpAndPorts: *iap,
-				},
-			}
-			reply, err := proto.Marshal(answer)
-			if err != nil {
-				l.Error(
-					"failed to marshal lighthouse host query reply",
-					zap.Uint32("vpnIp", uint32(IntIp(vpnIp))),
-					zap.Error(err),
-				)
-				return
-			}
-			lh.metricTx(NebulaMeta_HostQueryReply, 1)
-			f.SendMessageToVpnIp(lightHouse, 0, vpnIp, reply, make([]byte, 12), make([]byte, mtu))
-
-			// This signals the other side to punch some zero byte udp packets
-			ips, err = lh.Query(vpnIp, f)
-			if err != nil {
-				l.Debug(
-					"cant notify host to punch",
-					zap.Uint32("vpnIp", uint32(IntIp(vpnIp))),
-				)
-				return
-			} else {
-				//l.Debugln("Notify host to punch", iap)
-				iap = NewIpAndPortsFromNetIps(ips)
-				answer = &NebulaMeta{
-					Type: NebulaMeta_HostPunchNotification,
-					Details: &NebulaMetaDetails{
-						VpnIp:      vpnIp,
-						IpAndPorts: *iap,
-					},
-				}
-				reply, _ := proto.Marshal(answer)
-				lh.metricTx(NebulaMeta_HostPunchNotification, 1)
-				f.SendMessageToVpnIp(lightHouse, 0, n.Details.VpnIp, reply, make([]byte, 12), make([]byte, mtu))
-			}
-			//fmt.Println(reply, remoteaddr)
-		}
-
-	case NebulaMeta_HostQueryReply:
-		if !lh.IsLighthouseIP(vpnIp) {
-			return
-		}
-		for _, a := range n.Details.IpAndPorts {
-			//first := n.Details.IpAndPorts[0]
-			ans := NewUDPAddr(a.Ip, uint16(a.Port))
-			lh.AddRemote(n.Details.VpnIp, ans, false)
-		}
-		// Non-blocking attempt to trigger, skip if it would block
-		select {
-		case lh.handshakeTrigger <- n.Details.VpnIp:
-		default:
-		}
-
-	case NebulaMeta_HostUpdateNotification:
-		//Simple check that the host sent this not someone else
-		if n.Details.VpnIp != vpnIp {
-			l.Debug(
-				"host sent invalid update",
-				zap.Uint32("vpnIp", uint32(IntIp(vpnIp))),
-				zap.Uint32("answer", uint32(IntIp(n.Details.VpnIp))),
-			)
-			return
-		}
-		for _, a := range n.Details.IpAndPorts {
-			ans := NewUDPAddr(a.Ip, uint16(a.Port))
-			lh.AddRemote(n.Details.VpnIp, ans, false)
-		}
-	case NebulaMeta_HostMovedNotification:
-	case NebulaMeta_HostPunchNotification:
-		if !lh.IsLighthouseIP(vpnIp) {
-			return
-		}
-
-		empty := []byte{0}
-		for _, a := range n.Details.IpAndPorts {
-			vpnPeer := NewUDPAddr(a.Ip, uint16(a.Port))
-			go func() {
-				time.Sleep(lh.punchDelay)
-				lh.metricHolepunchTx.Inc(1)
-				lh.punchConn.WriteTo(empty, vpnPeer)
-
-			}()
-			l.Sugar().Debugf("Punching %s on %d for %s", IntIp(a.Ip), a.Port, IntIp(n.Details.VpnIp))
-		}
-		// This sends a nebula test packet to the host trying to contact us. In the case
-		// of a double nat or other difficult scenario, this may help establish
-		// a tunnel.
-		if lh.punchBack {
-			go func() {
-				time.Sleep(time.Second * 5)
-				l.Sugar().Debugf("Sending a nebula test packet to vpn ip %s", IntIp(n.Details.VpnIp))
-				f.SendMessageToVpnIp(test, testRequest, n.Details.VpnIp, []byte(""), make([]byte, 12), make([]byte, mtu))
-			}()
-		}
 	}
 }
 

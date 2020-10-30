@@ -17,7 +17,7 @@ const (
 	minFwPacketLen = 4
 )
 
-func (f *Interface) readOutsidePackets(addr *udpAddr, out []byte, packet []byte, header *Header, fwPacket *FirewallPacket, nb []byte) {
+func (f *Interface) readOutsidePackets(addr *udpAddr, out []byte, packet []byte, header *Header, fwPacket *FirewallPacket, lhh *LightHouseHandler, nb []byte) {
 	err := header.Parse(packet)
 	if err != nil {
 		// TODO: best if we return this and let caller log
@@ -73,8 +73,7 @@ func (f *Interface) readOutsidePackets(addr *udpAddr, out []byte, packet []byte,
 			//f.sendRecvError(net.Addr(addr), header.RemoteIndex)
 			return
 		}
-
-		f.lightHouse.HandleRequest(addr, hostinfo.hostId, d, hostinfo.GetCert(), f)
+		lhh.HandleRequest(addr, hostinfo.hostId, d, hostinfo.GetCert(), f)
 
 		// Fallthrough to the bottom to record incoming traffic
 
