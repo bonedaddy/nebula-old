@@ -100,6 +100,8 @@ func (u *udpConn) ListenOut(f *Interface) {
 	udpAddr := &udpAddr{}
 	nb := make([]byte, 12, 12)
 
+	lhh := f.lighthouse.NewRequestHandler()
+
 	for {
 		// Just read one packet at a time
 		n, rua, err := u.ReadFromUDP(buffer)
@@ -110,7 +112,7 @@ func (u *udpConn) ListenOut(f *Interface) {
 
 		udpAddr.IP = ip2int(rua.IP)
 		udpAddr.Port = uint16(rua.Port)
-		f.readOutsidePackets(udpAddr, plaintext[:0], buffer[:n], header, fwPacket, nb)
+		f.readOutsidePackets(udpAddr, plaintext[:0], buffer[:n], header, fwPacket, lhh, nb)
 	}
 }
 
