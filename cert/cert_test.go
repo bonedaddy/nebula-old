@@ -542,6 +542,13 @@ func newTestCaCert(before, after time.Time, ips, subnets []*net.IPNet, groups []
 	return nc, pub, priv, nil
 }
 
+func TestUnmarshalNebulaCertificate(t *testing.T) {
+	// Test that we don't panic with an invalid certificate (#332)
+	data := []byte("\x98\x00\x00")
+	_, err := UnmarshalNebulaCertificate(data)
+	assert.EqualError(t, err, "encoded Details was nil")
+}
+
 func newTestCert(ca *NebulaCertificate, key []byte, before, after time.Time, ips, subnets []*net.IPNet, groups []string) (*NebulaCertificate, []byte, []byte, error) {
 	issuer, err := ca.Sha256Sum()
 	if err != nil {

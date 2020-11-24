@@ -69,6 +69,11 @@ func ixHandshakeStage0(f *Interface, vpnIp uint32, hostinfo *HostInfo) {
 		)
 		return
 	}
+
+	// We are sending handshake packet 1, so we don't expect to receive
+	// handshake packet 1 from the responder
+	ci.window.Update(1)
+
 	hostinfo.Lock()
 	hostinfo.HandshakePacket[0] = msg
 	hostinfo.HandshakeReady = true
@@ -208,7 +213,7 @@ func ixHandshakeStage1(f *Interface, addr *udpAddr, hostinfo *HostInfo, packet [
 			zap.Any("handshake", m{"stage": 1, "style": "ix_psk0"}),
 		)
 
-		hostinfo.remoteIndexId = hs.Details.InitiatorIndex
+		f.handshakeManager.addRemoteIndexHostInfo(hs.Details.InitiatorIndex, hostinfo)
 		hs.Details.ResponderIndex = myIndex
 		hs.Details.Cert = ci.certState.rawCertificateNoKey
 
@@ -266,7 +271,9 @@ func ixHandshakeStage1(f *Interface, addr *udpAddr, hostinfo *HostInfo, packet [
 		if dKey != nil && eKey != nil {
 			hostinfo.HandshakePacket[2] = make([]byte, len(msg))
 			copy(hostinfo.HandshakePacket[2], msg)
-
+			// We are sending handshake packet 2, so we don't expect to receive
+			// handshake packet 2 from the initiator.
+			ci.window.Update(2)
 			f.messageMetrics.Tx(handshake, NebulaMessageSubType(msg[1]), 1)
 			err := f.outside.WriteTo(msg, addr)
 			if err != nil {
@@ -321,10 +328,9 @@ func ixHandshakeStage1(f *Interface, addr *udpAddr, hostinfo *HostInfo, packet [
 					zap.Uint32("index", ho.localIndexId),
 					zap.String("action", "removing stale index"),
 				)
-				f.hostMap.DeleteIndex(ho.localIndexId)
+				f.hostMap.DeleteHostInfo(ho)
 			}
 
-			f.hostMap.AddIndexHostInfo(hostinfo.localIndexId, hostinfo)
 			f.hostMap.AddVpnIPHostInfo(vpnIP, hostinfo)
 
 			hostinfo.handshakeComplete()
@@ -480,11 +486,10 @@ func ixHandshakeStage2(f *Interface, addr *udpAddr, hostinfo *HostInfo, packet [
 				zap.Uint32("index", ho.localIndexId),
 				zap.String("action", "removing stale index"),
 			)
-			f.hostMap.DeleteIndex(ho.localIndexId)
+			f.hostMap.DeleteHostInfo(ho)
 		}
 
 		f.hostMap.AddVpnIPHostInfo(vpnIP, hostinfo)
-		f.hostMap.AddIndexHostInfo(hostinfo.localIndexId, hostinfo)
 
 		hostinfo.handshakeComplete()
 		f.metricHandshakes.Update(duration)
