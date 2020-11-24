@@ -150,9 +150,10 @@ func (tw *TimerWheel) findWheel(timeout time.Duration) (i int) {
 	// current position
 	tick += tw.current + 1
 	if tick >= tw.wheelLen {
+		// this is causing problems
 		// set to 1 lower than wheel length
-		tick = tw.wheelLen - 1
-		//tick -= tw.wheelLen
+		// tick = tw.wheelLen - 1
+		tick -= tw.wheelLen
 	}
 
 	return tick
