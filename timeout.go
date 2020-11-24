@@ -152,8 +152,25 @@ func (tw *TimerWheel) findWheel(timeout time.Duration) (i int) {
 	if tick >= tw.wheelLen {
 		// this is causing problems
 		// set to 1 lower than wheel length
-		// tick = tw.wheelLen - 1
-		tick -= tw.wheelLen
+		tick = tw.wheelLen - 1
+		// tick -= tw.wheelLen is problematic because of this error
+		/*
+					panic: runtime error: index out of range [4] with length 4
+			oroutine 16 [running]:
+			ithub.com/slackhq/nebula.(*TimerWheel).Add(0xc000362230, 0xac1d0004ac1d0002, 0x61f90918c, 0x8bb2c97000, 0x61f909100)
+			       github.com/slackhq/nebula/timeout.go:98 +0x25f
+			ithub.com/slackhq/nebula.(*Firewall).addConn(0xc00007e500, 0xc00041a500, 0x3c, 0x2329, 0xac1d0004ac1d0002, 0x61f90918c, 0xac1d000400000000)
+			       github.com/slackhq/nebula/firewall.go:547 +0x1c5
+			ithub.com/slackhq/nebula.(*Firewall).Drop(0xc00007e500, 0xc00041a500, 0x3c, 0x2329, 0xac1d0004ac1d0002, 0x61f90918c, 0x0, 0xc00035e9a0, 0xc0000794d0, 0xc00035dc20, ...)
+			       github.com/slackhq/nebula/firewall.go:431 +0x187
+			ithub.com/slackhq/nebula.(*Interface).consumeInsidePacket(0xc00033c780, 0xc00041a500, 0x3c, 0x2329, 0xc000416010, 0xc000416020, 0xc, 0xc, 0xc00041ca00, 0x2329, ...)
+			       github.com/slackhq/nebula/inside.go:60 +0x4da
+			ithub.com/slackhq/nebula.(*Interface).listenIn(0xc00033c780, 0x0)
+			       github.com/slackhq/nebula/interface.go:176 +0x145
+			reated by github.com/slackhq/nebula.(*Interface).run
+			       github.com/slackhq/nebula/interface.go:137 +0x785
+		*/
+		// tick -= tw.wheelLen
 	}
 
 	return tick
