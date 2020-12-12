@@ -95,6 +95,12 @@ func (tw *TimerWheel) Add(v FirewallPacket, timeout time.Duration) *TimeoutItem 
 
 	// Relink and return
 	ti.Packet = v
+
+	// this is to fix an issue i saw with multi-lighthouse environments
+	if i >= len(tw.wheel) {
+		i = len(tw.wheel) - 1
+	}
+
 	if tw.wheel[i].Tail == nil {
 		tw.wheel[i].Head = ti
 		tw.wheel[i].Tail = ti
@@ -150,9 +156,10 @@ func (tw *TimerWheel) findWheel(timeout time.Duration) (i int) {
 	// current position
 	tick += tw.current + 1
 	if tick >= tw.wheelLen {
+		// this is causing problems
 		// set to 1 lower than wheel length
-		tick = tw.wheelLen - 1
-		//tick -= tw.wheelLen
+		// tick = tw.wheelLen - 1
+		tick -= tw.wheelLen
 	}
 
 	return tick

@@ -26,6 +26,7 @@ func TestNewTimerWheel(t *testing.T) {
 }
 
 func TestTimerWheel_findWheel(t *testing.T) {
+	// t.Skip("problematic see findWheel comment")
 	tw := NewTimerWheel(time.Second, time.Second*10)
 	assert.Len(t, tw.wheel, 11)
 

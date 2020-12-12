@@ -100,7 +100,7 @@ func (u *udpConn) ListenOut(f *Interface) {
 	udpAddr := &udpAddr{}
 	nb := make([]byte, 12, 12)
 
-	lhh := f.lighthouse.NewRequestHandler()
+	lhh := f.lightHouse.NewRequestHandler()
 
 	for {
 		// Just read one packet at a time

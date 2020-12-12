@@ -141,14 +141,18 @@ func (n *connectionManager) Start() {
 
 func (n *connectionManager) Run() {
 	clockSource := time.Tick(500 * time.Millisecond)
-
+	var (
+		p   []byte
+		nb  = make([]byte, 12)
+		out = make([]byte, mtu)
+	)
 	for now := range clockSource {
-		n.HandleMonitorTick(now)
+		n.HandleMonitorTick(now, p, nb, out)
 		n.HandleDeletionTick(now)
 	}
 }
 
-func (n *connectionManager) HandleMonitorTick(now time.Time) {
+func (n *connectionManager) HandleMonitorTick(now time.Time, p, nb, out []byte) {
 	n.TrafficTimer.advance(now)
 	for {
 		ep := n.TrafficTimer.Purge()
@@ -180,7 +184,7 @@ func (n *connectionManager) HandleMonitorTick(now time.Time) {
 		l.Debug("tunnel status check", zap.String("state", "testing"), zap.String("method", "active"))
 		if hostinfo != nil && hostinfo.ConnectionState != nil {
 			// Send a test packet to trigger an authenticated tunnel test, this should suss out any lingering tunnel issues
-			n.intf.SendMessageToVpnIp(test, testRequest, vpnIP, []byte(""), make([]byte, 12), make([]byte, mtu))
+			n.intf.SendMessageToVpnIp(test, testRequest, vpnIP, p, nb, out)
 
 		} else {
 			l.Debug("host info sadness", zap.Uint32("vpnIp", uint32(IntIp(vpnIP))))
@@ -234,8 +238,7 @@ func (n *connectionManager) HandleDeletionTick(now time.Time) {
 			if n.intf.lightHouse != nil {
 				n.intf.lightHouse.DeleteVpnIP(vpnIP)
 			}
-			n.hostMap.DeleteVpnIP(vpnIP)
-			n.hostMap.DeleteIndex(hostinfo.localIndexId)
+			n.hostMap.DeleteHostInfo(hostinfo)
 		} else {
 			n.ClearIP(vpnIP)
 			n.ClearPendingDeletion(vpnIP)
