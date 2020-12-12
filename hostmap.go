@@ -271,6 +271,29 @@ func (hm *HostMap) DeleteHostInfo(hostinfo *HostInfo) {
 		"vpnIp": IntIp(hostinfo.hostId), "indexNumber": hostinfo.localIndexId, "remoteIndexNumber": hostinfo.remoteIndexId})
 }
 
+func (hm *HostMap) DeleteHostInfo(hostinfo *HostInfo) {
+	hm.Lock()
+	delete(hm.Hosts, hostinfo.hostId)
+	if len(hm.Hosts) == 0 {
+		hm.Hosts = map[uint32]*HostInfo{}
+	}
+	delete(hm.Indexes, hostinfo.localIndexId)
+	if len(hm.Indexes) == 0 {
+		hm.Indexes = map[uint32]*HostInfo{}
+	}
+	delete(hm.RemoteIndexes, hostinfo.remoteIndexId)
+	if len(hm.RemoteIndexes) == 0 {
+		hm.RemoteIndexes = map[uint32]*HostInfo{}
+	}
+	hm.Unlock()
+
+	if l.Level >= logrus.DebugLevel {
+		l.WithField("hostMap", m{"mapName": hm.name, "mapTotalSize": len(hm.Hosts),
+			"vpnIp": IntIp(hostinfo.hostId), "indexNumber": hostinfo.localIndexId, "remoteIndexNumber": hostinfo.remoteIndexId}).
+			Debug("Hostmap hostInfo deleted")
+	}
+}
+
 func (hm *HostMap) QueryIndex(index uint32) (*HostInfo, error) {
 	//TODO: we probably just want ot return bool instead of error, or at least a static error
 	hm.RLock()

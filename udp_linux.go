@@ -147,6 +147,8 @@ func (u *udpConn) ListenOut(f *Interface) {
 
 	lhh := f.lightHouse.NewRequestHandler()
 
+	lhh := f.lightHouse.NewRequestHandler()
+
 	//TODO: should we track this?
 	//metric := metrics.GetOrRegisterHistogram("test.batch_read", nil, metrics.NewExpDecaySample(1028, 0.015))
 	msgs, buffers, names := u.PrepareRawMessages(f.udpBatchSize)
