@@ -562,8 +562,10 @@ func (f *Firewall) evict(p FirewallPacket) {
 	//TODO: report a stat if the tcp rtt tracking was never resolved?
 	// Are we still tracking this conn?
 	conntrack := f.Conntrack
+	conntrack.Lock()
 	t, ok := conntrack.Conns[p]
 	if !ok {
+		conntrack.Unlock()
 		return
 	}
 
@@ -572,11 +574,14 @@ func (f *Firewall) evict(p FirewallPacket) {
 	// Timeout is in the future, re-add the timer
 	if newT > 0 {
 		conntrack.TimerWheel.Add(p, newT)
+		conntrack.Unlock()
 		return
 	}
 
 	// This conn is done
 	delete(conntrack.Conns, p)
+
+	conntrack.Unlock()
 }
 
 func (ft *FirewallTable) match(p FirewallPacket, incoming bool, c *cert.NebulaCertificate, caPool *cert.NebulaCAPool) bool {
