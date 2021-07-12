@@ -10,3 +10,5 @@
 /cpu.pprof
 /build
 /*.tar.gz
+
+infra/testing/gotling_samples/results/
